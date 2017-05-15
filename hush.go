@@ -22,7 +22,7 @@ func Main() {
 	if err != nil {
 		die("%s\n", err.Error())
 	}
-	fmt.Fprintf(os.Stderr, "%#v\n", tree)
+	//warn("initial tree = %#v\n", tree)
 
 	if len(os.Args) == 3 { // hush paypal.com/personal/user john@example.com
 		mainSetValue(tree)
@@ -55,7 +55,8 @@ func mainSetValue(tree *Tree) {
 		die("pattern %q matches multiple paths: %s", paths)
 	}
 
-	tree.Set(path, value)
+	tree.SetPath(path, value)
+	tree.Print()
 	err = tree.Save()
 	if err != nil {
 		die("%s\n", err.Error())
@@ -119,7 +120,6 @@ func LoadTree() (*Tree, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't parse hush file")
 	}
-	fmt.Fprintf(os.Stderr, "keys = %#v\n", keys)
 	tree := &Tree{keys}
 	tree.decrypt()
 	return tree, nil
@@ -131,52 +131,60 @@ func (tree *Tree) Match(pattern string) ([][]string, error) {
 	return matches, nil
 }
 
-func (tree *Tree) Get(needle string) (*Tree, bool) {
+func (tree *Tree) Get(needle string) (interface{}, bool) {
 	for _, item := range tree.items {
 		if key, ok := item.Key.(string); ok {
 			if key == needle {
-				switch v := item.Value.(type) {
-				case yaml.MapSlice:
-					return &Tree{v}, true
-				default:
-					die("unexpected value type %#v", item.Value)
-				}
+				return item.Value, true
 			}
 		} else {
-			die("all keys should be strings not %#v", item.Key)
+			die("all keys should be strings not %#v\n", item.Key)
 		}
 	}
 	return nil, false
 }
 
-func (tree *Tree) Set(path []string, val interface{}) {
-	if len(path) == 0 {
-		die("path should not have 0 length")
+func (tree *Tree) Set(needle string, val interface{}) {
+	//warn("Set: %s %s\n", needle, val)
+	for i, item := range tree.items {
+		if key, ok := item.Key.(string); ok {
+			if key == needle {
+				tree.items[i].Value = val
+				return
+			}
+		} else {
+			die("all keys should be strings not %#v\n", item.Key)
+		}
 	}
 
-	key := path[0]
-	t, ok := tree.Get(key)
-	if len(path) == 1 {
-		if ok {
-			t.items[0].Value = val
-		} else {
-			tree.items = append(tree.items, yaml.MapItem{
-				Key:   key,
-				Value: val,
-			})
-		}
-	} else {
-		if ok {
-			t.Set(path[1:], val)
-		} else {
-			t = &Tree{}
-			t.Set(path[1:], val)
-			tree.items = append(tree.items, yaml.MapItem{
-				Key:   key,
-				Value: t.items,
-			})
-		}
+	tree.items = append(tree.items, yaml.MapItem{
+		Key:   needle,
+		Value: val,
+	})
+}
+
+func (tree *Tree) SetPath(path []string, val interface{}) {
+	//warn("SetPath: %s %s\n", path, val)
+	//defer warn("after Set(): %#v\n", tree)
+	switch len(path) {
+	case 0:
+		die("path should not have 0 length")
+	case 1:
+		tree.Set(path[0], val)
+		return
 	}
+
+	t := &Tree{}
+	key := path[0]
+	x, found := tree.Get(key)
+	if items, ok := x.(yaml.MapSlice); found && ok {
+		//warn("descending into: %s\n", key)
+		t.items = items
+	} else {
+		//warn("creating subtree: %s\n", key)
+	}
+	t.SetPath(path[1:], val)
+	tree.Set(key, t.items)
 }
 
 // Print displays a tree for human consumption.
@@ -199,10 +207,24 @@ func (tree *Tree) Save() error {
 		return errors.Wrap(err, "saving tree")
 	}
 
-	// TODO save to temporary file
-	// TODO move temporary file over top of permanent file
-	_, err = os.Stdout.Write(data)
-	return err
+	// save to temporary file
+	file, err := ioutil.TempFile("", "hush-")
+	if err != nil {
+		return errors.Wrap(err, "saving tree")
+	}
+	_, err = file.Write(data)
+	file.Close()
+	if err != nil {
+		return errors.Wrap(err, "saving tree")
+	}
+
+	// move temporary file over top of permanent file
+	hushPath, err := hushPath()
+	if err != nil {
+		return errors.Wrap(err, "saving tree")
+	}
+	err = os.Rename(file.Name(), hushPath)
+	return errors.Wrap(err, "saving tree")
 }
 
 func (tree *Tree) encrypt() {
