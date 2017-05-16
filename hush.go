@@ -34,10 +34,10 @@ func Main() {
 	}
 
 	switch os.Args[1] {
-	case "set": // hush set paypal.com/personal/user john@example.com
-		mainSetValue(tree)
 	case "import": // hush import
 		mainImport(tree)
+	case "set": // hush set paypal.com/personal/user john@example.com
+		mainSetValue(tree)
 	default:
 		die("Usage: hum ...\n")
 	}
