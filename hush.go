@@ -15,6 +15,53 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type T interface {
+	isTree()
+}
+
+type Branch map[string]T
+
+func (Branch) isTree() {}
+
+type Leaf string
+
+func (Leaf) isTree() {}
+
+func newT(items yaml.MapSlice) T {
+	branch := make(Branch, len(items))
+	for _, item := range items {
+		key := item.Key.(string)
+		switch v := item.Value.(type) {
+		case string:
+			branch[key] = Leaf(v)
+		case yaml.MapSlice:
+			branch[key] = newT(v)
+		default:
+			die("unexpected map item: %#v\n", v)
+		}
+	}
+	return branch
+}
+
+func toMapSlice(t T) interface{} {
+	switch v := t.(type) {
+	case Leaf:
+		return string(v)
+	case Branch:
+		items := make(yaml.MapSlice, len(v))
+		for key, value := range v {
+			items = append(items, yaml.MapItem{
+				Key:   key,
+				Value: toMapSlice(value),
+			})
+		}
+		return items
+	default:
+		die("unexpected T type: %#v\n", v)
+	}
+	return nil // make compiler happy
+}
+
 type Tree struct {
 	items yaml.MapSlice
 }
