@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -255,6 +256,7 @@ func (tree *Tree) SetPath(path []string, val interface{}) {
 
 // Print displays a tree for human consumption.
 func (tree *Tree) Print() error {
+	tree.sort()
 	data, err := yaml.Marshal(tree.items)
 	if err != nil {
 		return errors.Wrap(err, "printing tree")
@@ -266,6 +268,7 @@ func (tree *Tree) Print() error {
 
 // Save stores a tree to disk for permanent, private archival.
 func (tree *Tree) Save() error {
+	tree.sort()
 	tree.encrypt()
 
 	data, err := yaml.Marshal(tree.items)
@@ -291,6 +294,14 @@ func (tree *Tree) Save() error {
 	}
 	err = os.Rename(file.Name(), hushPath)
 	return errors.Wrap(err, "saving tree")
+}
+
+func (tree *Tree) sort() {
+	sort.SliceStable(tree.items, func(i, j int) bool {
+		a := strings.ToLower(tree.items[i].Key.(string))
+		b := strings.ToLower(tree.items[j].Key.(string))
+		return a < b
+	})
 }
 
 func (tree *Tree) encrypt() {
