@@ -1,6 +1,7 @@
 package hush
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,6 +36,8 @@ func Main() {
 	switch os.Args[1] {
 	case "set": // hush set paypal.com/personal/user john@example.com
 		mainSetValue(tree)
+	case "import": // hush import
+		mainImport(tree)
 	default:
 		die("Usage: hum ...\n")
 	}
@@ -64,6 +67,25 @@ func mainSetValue(tree *Tree) {
 	tree.SetPath(path, value)
 	tree.Print()
 	err = tree.Save()
+	if err != nil {
+		die("%s\n", err.Error())
+	}
+}
+
+func mainImport(tree *Tree) {
+	scanner := bufio.NewScanner(os.Stdin)
+	for n := 1; scanner.Scan(); n++ {
+		parts := strings.SplitN(scanner.Text(), "\t", 2)
+		if len(parts) < 2 {
+			warn("line %d missing tab delimiter\n", n)
+			continue
+		}
+		path := strings.Split(parts[0], "/")
+		val := parts[1]
+		tree.SetPath(path, val)
+	}
+	tree.Print()
+	err := tree.Save()
 	if err != nil {
 		die("%s\n", err.Error())
 	}
