@@ -75,7 +75,11 @@ func mainSetValue(tree *Tree) {
 func mainImport(tree *Tree) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for n := 1; scanner.Scan(); n++ {
-		parts := strings.SplitN(scanner.Text(), "\t", 2)
+		txt := scanner.Text()
+		if txt == "" {
+			continue
+		}
+		parts := strings.SplitN(txt, "\t", 2)
 		if len(parts) < 2 {
 			warn("line %d missing tab delimiter\n", n)
 			continue
