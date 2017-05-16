@@ -24,18 +24,24 @@ func Main() {
 	}
 	//warn("initial tree = %#v\n", tree)
 
-	if len(os.Args) == 3 { // hush paypal.com/personal/user john@example.com
-		mainSetValue(tree)
-	} else {
+	if len(os.Args) == 1 {
 		err = tree.Print()
 		if err != nil {
 			die("%s\n", err.Error())
 		}
+		os.Exit(0)
+	}
+
+	switch os.Args[1] {
+	case "set": // hush set paypal.com/personal/user john@example.com
+		mainSetValue(tree)
+	default:
+		die("Usage: hum ...\n")
 	}
 }
 
 func mainSetValue(tree *Tree) {
-	pattern, value := os.Args[1], os.Args[2]
+	pattern, value := os.Args[2], os.Args[3]
 	value, err := captureValue(value)
 	if err != nil {
 		die("%s\n", err.Error())
