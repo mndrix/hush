@@ -36,6 +36,12 @@ func Main() {
 	switch os.Args[1] {
 	case "import": // hush import
 		mainImport(tree)
+	case "ls": // hush ls foo/bar
+		if len(os.Args) < 3 {
+			tree.Print()
+			return
+		}
+		mainLs(tree, os.Args[2])
 	case "set": // hush set paypal.com/personal/user john@example.com
 		mainSetValue(tree)
 	default:
@@ -80,6 +86,11 @@ func mainImport(tree *Tree) {
 	if err != nil {
 		die("%s\n", err.Error())
 	}
+}
+
+func mainLs(tree *Tree, pattern string) {
+	tree = tree.Filter(pattern)
+	tree.Print()
 }
 
 func isTerminal(file *os.File) bool {
@@ -144,10 +155,46 @@ func LoadTree() (*Tree, error) {
 	return tree, nil
 }
 
-func (tree *Tree) Match(pattern string) ([][]string, error) {
-	var matches [][]string
-	// TODO perform pattern matching
-	return matches, nil
+func (tree *Tree) Filter(pattern string) *Tree {
+	parts := strings.Split(pattern, "/")
+	return tree.filter(parts)
+}
+
+func (tree *Tree) filter(parts []string) *Tree {
+	if len(parts) == 0 {
+		return tree
+	}
+
+	var items yaml.MapSlice
+	for _, item := range tree.items {
+		if s, ok := item.Key.(string); ok {
+			if matches(s, parts[0]) {
+				if kvs, ok := item.Value.(yaml.MapSlice); ok {
+					t := &Tree{items: kvs}
+					t = t.filter(parts[1:])
+					if len(t.items) > 0 {
+						items = append(items, yaml.MapItem{
+							Key:   s,
+							Value: t.items,
+						})
+					}
+				} else {
+					items = append(items, yaml.MapItem{
+						Key:   s,
+						Value: item.Value,
+					})
+				}
+			}
+		} else {
+			die("all keys should be strings not %#v\n", item.Key)
+		}
+	}
+
+	return &Tree{items: items}
+}
+
+func matches(s, pattern string) bool {
+	return strings.Contains(s, pattern)
 }
 
 func (tree *Tree) Get(needle string) (interface{}, bool) {
