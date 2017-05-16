@@ -49,21 +49,8 @@ func mainSetValue(tree *Tree) {
 	if err != nil {
 		die("%s\n", err.Error())
 	}
-	paths, err := tree.Match(pattern)
-	if err != nil {
-		die("%s\n", err.Error())
-	}
 
-	var path []string
-	switch len(paths) {
-	case 0:
-		path = strings.Split(pattern, "/")
-	case 1:
-		path = paths[0]
-	default:
-		die("pattern %q matches multiple paths: %s", paths)
-	}
-
+	path := strings.Split(pattern, "/")
 	tree.SetPath(path, value)
 	tree.Print()
 	err = tree.Save()
