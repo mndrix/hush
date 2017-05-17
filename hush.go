@@ -306,14 +306,6 @@ func (tree T) Save() error {
 	return errors.Wrap(err, "saving tree")
 }
 
-func (tree *Tree) sort() {
-	sort.SliceStable(tree.items, func(i, j int) bool {
-		a := strings.ToLower(tree.items[i].Key.(string))
-		b := strings.ToLower(tree.items[j].Key.(string))
-		return a < b
-	})
-}
-
 func (tree *Tree) encrypt() {
 	/*
 		block, err := aes.NewCipher(encryptionKey)
@@ -360,22 +352,6 @@ func (tree *Tree) decrypt() {
 		})
 	*/
 }
-
-/*
-func mapLeaves(items yaml.MapSlice, f func(string) string) {
-	for i := range items {
-		item := &items[i]
-		val := item.Value
-		if items, ok := val.(yaml.MapSlice); ok {
-			mapLeaves(items, f)
-		} else if str, ok := val.(string); ok {
-			item.Value = f(str)
-		} else {
-			panic("unexpected leaf type")
-		}
-	}
-}
-*/
 
 func home() (string, error) {
 	home := os.Getenv("HOME")
