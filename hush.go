@@ -1,7 +1,6 @@
 package hush // import "github.com/mndrix/hush"
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Main implements the main() function of the hush command line tool.
 func Main() {
 	tree, err := LoadTree()
 	if err != nil {
@@ -31,7 +31,13 @@ func Main() {
 
 	switch os.Args[1] {
 	case "import": // hush import
-		mainImport(tree)
+		warnings, err := CmdImport(tree, os.Stdin)
+		if err != nil {
+			die("%s\n", err.Error())
+		}
+		for _, warning := range warnings {
+			warn(warning)
+		}
 	case "ls": // hush ls foo/bar
 		if len(os.Args) < 3 {
 			tree.Print()
@@ -56,29 +62,6 @@ func mainSetValue(tree T) {
 	tree.set(p, val)
 	tree.Print()
 	err = tree.Save()
-	if err != nil {
-		die("%s\n", err.Error())
-	}
-}
-
-func mainImport(tree T) {
-	scanner := bufio.NewScanner(os.Stdin)
-	for n := 1; scanner.Scan(); n++ {
-		txt := scanner.Text()
-		if txt == "" {
-			continue
-		}
-		parts := strings.SplitN(txt, "\t", 2)
-		if len(parts) < 2 {
-			warn("line %d missing tab delimiter\n", n)
-			continue
-		}
-		p := NewPath(parts[0])
-		val := value(parts[1])
-		tree.set(p, val)
-	}
-	tree.Print()
-	err := tree.Save()
 	if err != nil {
 		die("%s\n", err.Error())
 	}
@@ -113,7 +96,7 @@ func die(format string, args ...interface{}) {
 }
 
 func warn(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
 }
 
 func LoadTree() (T, error) {
