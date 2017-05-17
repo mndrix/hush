@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	p "path"
 	"sort"
 	"strings"
 
@@ -15,51 +15,99 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type T interface {
-	isTree()
-}
-
-type Branch map[string]T
-
-func (Branch) isTree() {}
-
-type Leaf string
-
-func (Leaf) isTree() {}
+type path string
+type value string
+type T map[path]value
 
 func newT(items yaml.MapSlice) T {
-	branch := make(Branch, len(items))
-	for _, item := range items {
-		key := item.Key.(string)
-		switch v := item.Value.(type) {
-		case string:
-			branch[key] = Leaf(v)
-		case yaml.MapSlice:
-			branch[key] = newT(v)
-		default:
-			die("unexpected map item: %#v\n", v)
-		}
-	}
-	return branch
+	t := make(T, 3*len(items))
+	newT_(items, []string{}, t)
+	return t
 }
 
-func toMapSlice(t T) interface{} {
-	switch v := t.(type) {
-	case Leaf:
-		return string(v)
-	case Branch:
-		items := make(yaml.MapSlice, len(v))
-		for key, value := range v {
-			items = append(items, yaml.MapItem{
-				Key:   key,
-				Value: toMapSlice(value),
-			})
+func newT_(items yaml.MapSlice, crumbs []string, t T) {
+	n := len(crumbs)
+	for _, item := range items {
+		key := item.Key.(string)
+		crumbs = append(crumbs, key)
+
+		switch val := item.Value.(type) {
+		case string:
+			t[path(strings.Join(crumbs, "\t"))] = value(val)
+		case yaml.MapSlice:
+			newT_(val, crumbs, t)
+		default:
+			panic(fmt.Sprintf("unexpected type: %#v", val))
 		}
-		return items
-	default:
-		die("unexpected T type: %#v\n", v)
+		crumbs = crumbs[:n] // remove final crumb
 	}
-	return nil // make compiler happy
+}
+
+func (t T) mapSlice() yaml.MapSlice {
+	// sort by key
+	kvs := make([][]string, 0, len(t))
+	for p, val := range t {
+		kvs = append(kvs, []string{string(p), string(val)})
+	}
+	sort.SliceStable(kvs, func(i, j int) bool {
+		return kvs[i][0] < kvs[j][0]
+	})
+
+	var slice yaml.MapSlice
+	for _, kv := range kvs {
+		path := strings.Split(kv[0], "\t")
+		slice = mapSlice_(slice, path, kv[1])
+	}
+	return slice
+}
+
+func mapSlice_(slice yaml.MapSlice, path []string, value string) yaml.MapSlice {
+	if len(path) == 0 {
+		panic("path should never have 0 length")
+	}
+	if len(path) == 1 {
+		return append(slice, yaml.MapItem{
+			Key:   path[0],
+			Value: value,
+		})
+	}
+
+	var inner yaml.MapSlice
+	if len(slice) == 0 {
+		slice = append(slice, yaml.MapItem{Key: path[0]})
+	} else {
+		final := slice[len(slice)-1]
+		if final.Key.(string) == path[0] {
+			inner = final.Value.(yaml.MapSlice)
+		} else {
+			slice = append(slice, yaml.MapItem{Key: path[0]})
+		}
+	}
+	slice[len(slice)-1].Value = mapSlice_(inner, path[1:], value)
+	return slice
+}
+
+func (t T) decrypt() {} // iterate values decrypting them
+
+func (t T) encrypt() {} // iterate values encrypting them
+
+func (t T) filter(pattern string) T {
+	keep := make(T)
+	for p, val := range t {
+		if matches(p, pattern) {
+			keep[p] = val
+		}
+	}
+	return keep
+}
+
+func (t T) get(p path) (value, bool) {
+	val, ok := t[p]
+	return val, ok
+}
+
+func (t T) set(p path, val value) {
+	t[p] = val
 }
 
 type Tree struct {
@@ -97,15 +145,15 @@ func Main() {
 	}
 }
 
-func mainSetValue(tree *Tree) {
-	pattern, value := os.Args[2], os.Args[3]
-	value, err := captureValue(value)
+func mainSetValue(tree T) {
+	pattern := os.Args[2]
+	val, err := captureValue(os.Args[3])
 	if err != nil {
 		die("%s\n", err.Error())
 	}
 
-	path := strings.Split(pattern, "/")
-	tree.SetPath(path, value)
+	p := path(strings.Replace(pattern, "/", "\t", -1))
+	tree.set(p, val)
 	tree.Print()
 	err = tree.Save()
 	if err != nil {
@@ -113,7 +161,7 @@ func mainSetValue(tree *Tree) {
 	}
 }
 
-func mainImport(tree *Tree) {
+func mainImport(tree T) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for n := 1; scanner.Scan(); n++ {
 		txt := scanner.Text()
@@ -125,9 +173,9 @@ func mainImport(tree *Tree) {
 			warn("line %d missing tab delimiter\n", n)
 			continue
 		}
-		path := strings.Split(parts[0], "/")
-		val := parts[1]
-		tree.SetPath(path, val)
+		p := path(strings.Replace(parts[0], "/", "\t", -1))
+		val := value(parts[1])
+		tree.set(p, val)
 	}
 	tree.Print()
 	err := tree.Save()
@@ -136,8 +184,8 @@ func mainImport(tree *Tree) {
 	}
 }
 
-func mainLs(tree *Tree, pattern string) {
-	tree = tree.Filter(pattern)
+func mainLs(tree T, pattern string) {
+	tree = tree.filter(pattern)
 	tree.Print()
 }
 
@@ -145,8 +193,8 @@ func isTerminal(file *os.File) bool {
 	return terminal.IsTerminal(int(os.Stdin.Fd()))
 }
 
-func captureValue(value string) (string, error) {
-	if value == "-" {
+func captureValue(s string) (value, error) {
+	if s == "-" {
 		if isTerminal(os.Stdout) {
 			editor := editor()
 			warn("would launch %s to capture value\n", editor)
@@ -154,9 +202,9 @@ func captureValue(value string) (string, error) {
 		}
 
 		all, err := ioutil.ReadAll(os.Stdin)
-		return string(all), err
+		return value(all), err
 	}
-	return value, nil
+	return value(s), nil
 }
 
 func die(format string, args ...interface{}) {
@@ -168,7 +216,7 @@ func warn(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, args...)
 }
 
-func LoadTree() (*Tree, error) {
+func LoadTree() (T, error) {
 	hushPath, err := hushPath()
 	if err != nil {
 		return nil, err
@@ -177,7 +225,7 @@ func LoadTree() (*Tree, error) {
 	_, err = os.Stat(hushPath)
 	if os.IsNotExist(err) {
 		warn("hush file does not exist. assuming an empty one\n")
-		return &Tree{}, nil
+		return T{}, nil
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "can't stat hush file")
@@ -198,113 +246,30 @@ func LoadTree() (*Tree, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't parse hush file")
 	}
-	tree := &Tree{keys}
+	tree := newT(keys)
 	tree.decrypt()
 	return tree, nil
 }
 
-func (tree *Tree) Filter(pattern string) *Tree {
-	parts := strings.Split(pattern, "/")
-	return tree.filter(parts)
-}
-
-func (tree *Tree) filter(parts []string) *Tree {
-	if len(parts) == 0 {
-		return tree
+func matches(p path, pattern string) bool {
+	ps := strings.Split(string(p), "\t")
+	patterns := strings.Split(pattern, "/")
+	if len(patterns) > len(ps) {
+		return false
 	}
 
-	var items yaml.MapSlice
-	for _, item := range tree.items {
-		if s, ok := item.Key.(string); ok {
-			if matches(s, parts[0]) {
-				if kvs, ok := item.Value.(yaml.MapSlice); ok {
-					t := &Tree{items: kvs}
-					t = t.filter(parts[1:])
-					if len(t.items) > 0 {
-						items = append(items, yaml.MapItem{
-							Key:   s,
-							Value: t.items,
-						})
-					}
-				} else {
-					items = append(items, yaml.MapItem{
-						Key:   s,
-						Value: item.Value,
-					})
-				}
-			}
-		} else {
-			die("all keys should be strings not %#v\n", item.Key)
+	for i, pattern := range patterns {
+		if !strings.Contains(ps[i], pattern) {
+			return false
 		}
 	}
-
-	return &Tree{items: items}
-}
-
-func matches(s, pattern string) bool {
-	return strings.Contains(s, pattern)
-}
-
-func (tree *Tree) Get(needle string) (interface{}, bool) {
-	for _, item := range tree.items {
-		if key, ok := item.Key.(string); ok {
-			if key == needle {
-				return item.Value, true
-			}
-		} else {
-			die("all keys should be strings not %#v\n", item.Key)
-		}
-	}
-	return nil, false
-}
-
-func (tree *Tree) Set(needle string, val interface{}) {
-	//warn("Set: %s %s\n", needle, val)
-	for i, item := range tree.items {
-		if key, ok := item.Key.(string); ok {
-			if key == needle {
-				tree.items[i].Value = val
-				return
-			}
-		} else {
-			die("all keys should be strings not %#v\n", item.Key)
-		}
-	}
-
-	tree.items = append(tree.items, yaml.MapItem{
-		Key:   needle,
-		Value: val,
-	})
-}
-
-func (tree *Tree) SetPath(path []string, val interface{}) {
-	//warn("SetPath: %s %s\n", path, val)
-	//defer warn("after Set(): %#v\n", tree)
-	switch len(path) {
-	case 0:
-		die("path should not have 0 length")
-	case 1:
-		tree.Set(path[0], val)
-		return
-	}
-
-	t := &Tree{}
-	key := path[0]
-	x, found := tree.Get(key)
-	if items, ok := x.(yaml.MapSlice); found && ok {
-		//warn("descending into: %s\n", key)
-		t.items = items
-	} else {
-		//warn("creating subtree: %s\n", key)
-	}
-	t.SetPath(path[1:], val)
-	tree.Set(key, t.items)
+	return true
 }
 
 // Print displays a tree for human consumption.
-func (tree *Tree) Print() error {
-	tree.sort()
-	data, err := yaml.Marshal(tree.items)
+func (tree T) Print() error {
+	slice := tree.mapSlice()
+	data, err := yaml.Marshal(slice)
 	if err != nil {
 		return errors.Wrap(err, "printing tree")
 	}
@@ -314,11 +279,11 @@ func (tree *Tree) Print() error {
 }
 
 // Save stores a tree to disk for permanent, private archival.
-func (tree *Tree) Save() error {
-	tree.sort()
+func (tree T) Save() error {
 	tree.encrypt()
+	slice := tree.mapSlice()
 
-	data, err := yaml.Marshal(tree.items)
+	data, err := yaml.Marshal(slice)
 	if err != nil {
 		return errors.Wrap(err, "saving tree")
 	}
@@ -427,7 +392,7 @@ func hushPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(home, ".hush"), nil
+	return p.Join(home, ".hush"), nil
 }
 
 var editorVarNames = []string{
