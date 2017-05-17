@@ -15,7 +15,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type value string
 type T map[path]value
 
 func newT(items yaml.MapSlice) T {
@@ -151,7 +150,7 @@ func mainSetValue(tree T) {
 		die("%s\n", err.Error())
 	}
 
-	p := pathFromSlashes(pattern)
+	p := NewPath(pattern)
 	tree.set(p, val)
 	tree.Print()
 	err = tree.Save()
@@ -172,7 +171,7 @@ func mainImport(tree T) {
 			warn("line %d missing tab delimiter\n", n)
 			continue
 		}
-		p := pathFromSlashes(parts[0])
+		p := NewPath(parts[0])
 		val := value(parts[1])
 		tree.set(p, val)
 	}
