@@ -15,7 +15,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type path string
 type value string
 type T map[path]value
 
@@ -152,7 +151,7 @@ func mainSetValue(tree T) {
 		die("%s\n", err.Error())
 	}
 
-	p := path(strings.Replace(pattern, "/", "\t", -1))
+	p := pathFromSlashes(pattern)
 	tree.set(p, val)
 	tree.Print()
 	err = tree.Save()
@@ -173,7 +172,7 @@ func mainImport(tree T) {
 			warn("line %d missing tab delimiter\n", n)
 			continue
 		}
-		p := path(strings.Replace(parts[0], "/", "\t", -1))
+		p := pathFromSlashes(parts[0])
 		val := value(parts[1])
 		tree.set(p, val)
 	}
