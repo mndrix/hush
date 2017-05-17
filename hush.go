@@ -1,4 +1,4 @@
-package hush
+package hush // import "github.com/mndrix/hush"
 
 import (
 	"bufio"
