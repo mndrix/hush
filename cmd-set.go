@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-func CmdSet(w io.Writer, tree T, p path, v value) error {
+func CmdSet(w io.Writer, tree T, p path, v Value) error {
 	tree.set(p, v)
 	t := tree.filter(p.Parent().AsPattern())
 	t.Print(w)
@@ -19,7 +19,7 @@ func isTerminal(file *os.File) bool {
 	return terminal.IsTerminal(int(os.Stdin.Fd()))
 }
 
-func captureValue(s string) (value, error) {
+func captureValue(s string) (Value, error) {
 	if s == "-" {
 		if isTerminal(os.Stdout) {
 			editor := editor()
@@ -28,7 +28,7 @@ func captureValue(s string) (value, error) {
 		}
 
 		all, err := ioutil.ReadAll(os.Stdin)
-		return value(all), err
+		return NewValue(string(all)), err
 	}
-	return value(s), nil
+	return NewValue(s), nil
 }

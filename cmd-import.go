@@ -28,7 +28,7 @@ func CmdImport(w io.Writer, r io.Reader, tree T) ([]string, error) {
 			continue
 		}
 		p := NewPath(parts[0])
-		val := value(parts[1])
+		val := NewValue(parts[1])
 		tree.set(p, val)
 	}
 	tree.Print(w)
