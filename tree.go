@@ -104,63 +104,17 @@ func (t T) set(p Path, val Value) {
 }
 
 func (tree T) encrypt() {
-	var key []byte
 	for p, v := range tree {
-		if !v.IsEncrypted() {
-			tree[p] = v.Ciphertext(key)
-		}
+		tree[p] = v.Ciphertext(encryptionKey)
 	}
-
-	/*
-		block, err := aes.NewCipher(encryptionKey)
-		if err != nil {
-			panic(err)
-		}
-		gcm, err := cipher.NewGCM(block)
-		if err != nil {
-			panic(err)
-		}
-		nonce := make([]byte, 12)
-		_, err = rand.Read(nonce)
-		if err != nil {
-			panic(err)
-		}
-
-		mapLeaves(tree.items, func(leaf string) string {
-			plaintext := make([]byte, 1+len(leaf))
-			plaintext[0] = 1 // version number
-			copy(plaintext[1:], []byte(leaf))
-			ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
-			return base64.StdEncoding.EncodeToString(ciphertext)
-		})
-	*/
 }
 
 var encryptionKey = []byte(`0123456789abcdef`)
 
 func (tree T) decrypt() {
-	var key []byte
 	for p, v := range tree {
-		if v.IsEncrypted() {
-			tree[p] = v.Plaintext(key)
-		}
+		tree[p] = v.Plaintext(encryptionKey)
 	}
-	/*
-		mapLeaves(tree.items, func(leaf string) string {
-			data, err := base64.StdEncoding.DecodeString(leaf)
-			if err != nil {
-				// it must be decrypted already
-				return leaf
-			}
-			if len(data) < 1 {
-				panic("too little encrypted data")
-			}
-			if data[0] != 1 {
-				panic("I only understand version 1")
-			}
-			return string(data[1:])
-		})
-	*/
 }
 
 // Print displays a tree for human consumption.
