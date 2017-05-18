@@ -7,8 +7,6 @@ import (
 	p "path"
 	"strings"
 
-	"golang.org/x/crypto/ssh/terminal"
-
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -45,44 +43,18 @@ func Main() {
 		}
 		CmdLs(os.Stdout, tree, os.Args[2])
 	case "set": // hush set paypal.com/personal/user john@example.com
-		mainSetValue(tree)
+		p := NewPath(os.Args[2])
+		v, err := captureValue(os.Args[3])
+		if err != nil {
+			die("%s\n", err.Error())
+		}
+		err = CmdSet(os.Stdout, tree, p, v)
+		if err != nil {
+			die("%s\n", err.Error())
+		}
 	default:
 		die("Usage: hum ...\n")
 	}
-}
-
-func mainSetValue(tree T) {
-	pattern := os.Args[2]
-	val, err := captureValue(os.Args[3])
-	if err != nil {
-		die("%s\n", err.Error())
-	}
-
-	p := NewPath(pattern)
-	tree.set(p, val)
-	tree.Print(os.Stdout)
-	err = tree.Save()
-	if err != nil {
-		die("%s\n", err.Error())
-	}
-}
-
-func isTerminal(file *os.File) bool {
-	return terminal.IsTerminal(int(os.Stdin.Fd()))
-}
-
-func captureValue(s string) (value, error) {
-	if s == "-" {
-		if isTerminal(os.Stdout) {
-			editor := editor()
-			warn("would launch %s to capture value\n", editor)
-			return "", nil
-		}
-
-		all, err := ioutil.ReadAll(os.Stdin)
-		return value(all), err
-	}
-	return value(s), nil
 }
 
 func die(format string, args ...interface{}) {
