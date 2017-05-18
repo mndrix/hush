@@ -2,6 +2,7 @@ package hush
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -162,14 +163,14 @@ func (tree T) decrypt() {
 }
 
 // Print displays a tree for human consumption.
-func (tree T) Print() error {
+func (tree T) Print(w io.Writer) error {
 	slice := tree.mapSlice()
 	data, err := yaml.Marshal(slice)
 	if err != nil {
 		return errors.Wrap(err, "printing tree")
 	}
 
-	_, err = os.Stdout.Write(data)
+	_, err = w.Write(data)
 	return err
 }
 

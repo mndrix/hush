@@ -13,7 +13,7 @@ import (
 // tree.  Returns a slice of warnings, if any.
 //
 // This function implements "hush import"
-func CmdImport(tree T, r io.Reader) ([]string, error) {
+func CmdImport(w io.Writer, r io.Reader, tree T) ([]string, error) {
 	var warnings []string
 	scanner := bufio.NewScanner(r)
 	for n := 1; scanner.Scan(); n++ {
@@ -31,7 +31,7 @@ func CmdImport(tree T, r io.Reader) ([]string, error) {
 		val := value(parts[1])
 		tree.set(p, val)
 	}
-	tree.Print()
+	tree.Print(w)
 	err := tree.Save()
 	return nil, errors.Wrap(err, "import")
 }

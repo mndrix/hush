@@ -22,7 +22,7 @@ func Main() {
 	//warn("initial tree = %#v\n", tree)
 
 	if len(os.Args) == 1 {
-		err = tree.Print()
+		err = tree.Print(os.Stdout)
 		if err != nil {
 			die("%s\n", err.Error())
 		}
@@ -31,7 +31,7 @@ func Main() {
 
 	switch os.Args[1] {
 	case "import": // hush import
-		warnings, err := CmdImport(tree, os.Stdin)
+		warnings, err := CmdImport(os.Stdout, os.Stdin, tree)
 		if err != nil {
 			die("%s\n", err.Error())
 		}
@@ -40,7 +40,7 @@ func Main() {
 		}
 	case "ls": // hush ls foo/bar
 		if len(os.Args) < 3 {
-			tree.Print()
+			tree.Print(os.Stdout)
 			return
 		}
 		mainLs(tree, os.Args[2])
@@ -60,7 +60,7 @@ func mainSetValue(tree T) {
 
 	p := NewPath(pattern)
 	tree.set(p, val)
-	tree.Print()
+	tree.Print(os.Stdout)
 	err = tree.Save()
 	if err != nil {
 		die("%s\n", err.Error())
@@ -69,7 +69,7 @@ func mainSetValue(tree T) {
 
 func mainLs(tree T, pattern string) {
 	tree = tree.filter(pattern)
-	tree.Print()
+	tree.Print(os.Stdout)
 }
 
 func isTerminal(file *os.File) bool {
