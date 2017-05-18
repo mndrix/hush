@@ -43,7 +43,7 @@ func Main() {
 			tree.Print(os.Stdout)
 			return
 		}
-		mainLs(tree, os.Args[2])
+		CmdLs(os.Stdout, tree, os.Args[2])
 	case "set": // hush set paypal.com/personal/user john@example.com
 		mainSetValue(tree)
 	default:
@@ -65,11 +65,6 @@ func mainSetValue(tree T) {
 	if err != nil {
 		die("%s\n", err.Error())
 	}
-}
-
-func mainLs(tree T, pattern string) {
-	tree = tree.filter(pattern)
-	tree.Print(os.Stdout)
 }
 
 func isTerminal(file *os.File) bool {
