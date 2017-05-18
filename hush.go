@@ -101,7 +101,7 @@ func LoadTree() (T, error) {
 	return tree, nil
 }
 
-func matches(p path, pattern string) bool {
+func matches(p Path, pattern string) bool {
 	ps := strings.Split(string(p), "\t")
 	patterns := strings.Split(pattern, "/")
 	if len(patterns) > len(ps) {

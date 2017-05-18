@@ -13,7 +13,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type T map[path]Value
+type T map[Path]Value
 
 func newT(items yaml.MapSlice) T {
 	t := make(T, 3*len(items))
@@ -29,7 +29,8 @@ func newT_(items yaml.MapSlice, crumbs []string, t T) {
 
 		switch val := item.Value.(type) {
 		case string:
-			t[path(strings.Join(crumbs, "\t"))] = NewValue(val)
+			p := NewPath(strings.Join(crumbs, "/"))
+			t[p] = NewValue(val)
 		case yaml.MapSlice:
 			newT_(val, crumbs, t)
 		default:
@@ -93,12 +94,12 @@ func (t T) filter(pattern string) T {
 	return keep
 }
 
-func (t T) get(p path) (Value, bool) {
+func (t T) get(p Path) (Value, bool) {
 	val, ok := t[p]
 	return val, ok
 }
 
-func (t T) set(p path, val Value) {
+func (t T) set(p Path, val Value) {
 	t[p] = val
 }
 

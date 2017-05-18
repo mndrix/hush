@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-func CmdSet(w io.Writer, tree T, p path, v Value) error {
+func CmdSet(w io.Writer, tree T, p Path, v Value) error {
 	tree.set(p, v)
 	t := tree.filter(p.Parent().AsPattern())
 	t.Print(w)
