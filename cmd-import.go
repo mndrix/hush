@@ -13,7 +13,7 @@ import (
 // tree.  Returns a slice of warnings, if any.
 //
 // This function implements "hush import"
-func CmdImport(w io.Writer, r io.Reader, tree T) ([]string, error) {
+func CmdImport(w io.Writer, r io.Reader, tree *Tree) ([]string, error) {
 	var warnings []string
 	scanner := bufio.NewScanner(r)
 	for n := 1; scanner.Scan(); n++ {

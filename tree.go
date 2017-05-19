@@ -13,11 +13,13 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type T map[Path]Value
+type Tree struct {
+	tree map[Path]Value
+}
 
 const safePerm = 0600 // rw- --- ---
 
-func LoadTree() (T, error) {
+func LoadTree() (*Tree, error) {
 	hushPath, err := hushPath()
 	if err != nil {
 		return nil, err
@@ -26,7 +28,7 @@ func LoadTree() (T, error) {
 	stat, err := os.Stat(hushPath)
 	if os.IsNotExist(err) {
 		warn("hush file does not exist. assuming an empty one")
-		return T{}, nil
+		return &Tree{}, nil
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "can't stat hush file")
@@ -57,13 +59,15 @@ func LoadTree() (T, error) {
 	return tree, nil
 }
 
-func newT(items yaml.MapSlice) T {
-	t := make(T, 3*len(items))
+func newT(items yaml.MapSlice) *Tree {
+	t := &Tree{
+		tree: make(map[Path]Value, 3*len(items)),
+	}
 	newT_(items, []string{}, t)
 	return t
 }
 
-func newT_(items yaml.MapSlice, crumbs []string, t T) {
+func newT_(items yaml.MapSlice, crumbs []string, t *Tree) {
 	n := len(crumbs)
 	for _, item := range items {
 		key := item.Key.(string)
@@ -72,7 +76,7 @@ func newT_(items yaml.MapSlice, crumbs []string, t T) {
 		switch val := item.Value.(type) {
 		case string:
 			p := NewPath(strings.Join(crumbs, "/"))
-			t[p] = NewValue(val)
+			t.tree[p] = NewValue(val)
 		case yaml.MapSlice:
 			newT_(val, crumbs, t)
 		default:
@@ -82,10 +86,10 @@ func newT_(items yaml.MapSlice, crumbs []string, t T) {
 	}
 }
 
-func (t T) mapSlice() yaml.MapSlice {
+func (t *Tree) mapSlice() yaml.MapSlice {
 	// sort by key
-	kvs := make([][]string, 0, len(t))
-	for p, val := range t {
+	kvs := make([][]string, 0, len(t.tree))
+	for p, val := range t.tree {
 		kvs = append(kvs, []string{string(p), string(val)})
 	}
 	sort.SliceStable(kvs, func(i, j int) bool {
@@ -126,11 +130,13 @@ func mapSlice_(slice yaml.MapSlice, path []string, value string) yaml.MapSlice {
 	return slice
 }
 
-func (t T) filter(pattern string) T {
-	keep := make(T)
-	for p, val := range t {
+func (t *Tree) filter(pattern string) *Tree {
+	keep := &Tree{
+		tree: make(map[Path]Value),
+	}
+	for p, val := range t.tree {
 		if matches(p, pattern) {
-			keep[p] = val
+			keep.tree[p] = val
 		}
 	}
 	return keep
@@ -160,34 +166,36 @@ func matches(p Path, pattern string) bool {
 	return true
 }
 
-func (t T) get(p Path) (Value, bool) {
-	val, ok := t[p]
+func (t *Tree) get(p Path) (Value, bool) {
+	val, ok := t.tree[p]
 	return val, ok
 }
 
-func (t T) set(p Path, val Value) {
-	t[p] = val.Ciphertext(encryptionKey)
+func (t *Tree) set(p Path, val Value) {
+	t.tree[p] = val.Ciphertext(encryptionKey)
 }
 
-func (tree T) encrypt() {
-	for p, v := range tree {
-		tree[p] = v.Ciphertext(encryptionKey)
+func (t *Tree) encrypt() {
+	for p, v := range t.tree {
+		t.tree[p] = v.Ciphertext(encryptionKey)
 	}
 }
 
 var encryptionKey = []byte(`0123456789abcdef`)
 
 // Decrypt returns a copy of this tree with all leaves decrypted.
-func (tree T) Decrypt() T {
-	t := make(T, len(tree))
-	for p, v := range tree {
-		t[p] = v.Plaintext(encryptionKey)
+func (tree *Tree) Decrypt() *Tree {
+	t := &Tree{
+		tree: make(map[Path]Value, len(tree.tree)),
+	}
+	for p, v := range tree.tree {
+		t.tree[p] = v.Plaintext(encryptionKey)
 	}
 	return t
 }
 
 // Print displays a tree for human consumption.
-func (tree T) Print(w io.Writer) error {
+func (tree *Tree) Print(w io.Writer) error {
 	tree = tree.Decrypt()
 	slice := tree.mapSlice()
 	data, err := yaml.Marshal(slice)
@@ -200,7 +208,7 @@ func (tree T) Print(w io.Writer) error {
 }
 
 // Save stores a tree to disk for permanent, private archival.
-func (tree T) Save() error {
+func (tree *Tree) Save() error {
 	slice := tree.mapSlice()
 
 	data, err := yaml.Marshal(slice)
