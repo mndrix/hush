@@ -159,15 +159,18 @@ func (tree T) encrypt() {
 
 var encryptionKey = []byte(`0123456789abcdef`)
 
-func (tree T) decrypt() {
+// Decrypt returns a copy of this tree with all leaves decrypted.
+func (tree T) Decrypt() T {
+	t := make(T, len(tree))
 	for p, v := range tree {
-		tree[p] = v.Plaintext(encryptionKey)
+		t[p] = v.Plaintext(encryptionKey)
 	}
+	return t
 }
 
 // Print displays a tree for human consumption.
 func (tree T) Print(w io.Writer) error {
-	tree.decrypt()
+	tree = tree.Decrypt()
 	slice := tree.mapSlice()
 	data, err := yaml.Marshal(slice)
 	if err != nil {
