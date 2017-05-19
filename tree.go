@@ -45,7 +45,6 @@ func LoadTree() (T, error) {
 		return nil, errors.Wrap(err, "can't parse hush file")
 	}
 	tree := newT(keys)
-	tree.decrypt()
 	return tree, nil
 }
 
@@ -149,7 +148,7 @@ func (t T) get(p Path) (Value, bool) {
 }
 
 func (t T) set(p Path, val Value) {
-	t[p] = val
+	t[p] = val.Ciphertext(encryptionKey)
 }
 
 func (tree T) encrypt() {
@@ -168,6 +167,7 @@ func (tree T) decrypt() {
 
 // Print displays a tree for human consumption.
 func (tree T) Print(w io.Writer) error {
+	tree.decrypt()
 	slice := tree.mapSlice()
 	data, err := yaml.Marshal(slice)
 	if err != nil {
@@ -180,7 +180,6 @@ func (tree T) Print(w io.Writer) error {
 
 // Save stores a tree to disk for permanent, private archival.
 func (tree T) Save() error {
-	tree.encrypt()
 	slice := tree.mapSlice()
 
 	data, err := yaml.Marshal(slice)
