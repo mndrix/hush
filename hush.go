@@ -17,6 +17,12 @@ func Main() {
 	}
 
 	switch os.Args[1] {
+	case "export": // hush export
+		err := SetPassphrase(tree)
+		if err != nil {
+			die("%s\n", err.Error())
+		}
+		CmdExport(os.Stdout, tree)
 	case "import": // hush import
 		err := SetPassphrase(tree)
 		if err != nil {

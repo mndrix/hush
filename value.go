@@ -17,6 +17,10 @@ func NewValue(v string) Value {
 	return Value(v)
 }
 
+func (v Value) String() string {
+	return string(v)
+}
+
 func gcm(key []byte) cipher.AEAD {
 	block, err := aes.NewCipher(key)
 	if err != nil {
