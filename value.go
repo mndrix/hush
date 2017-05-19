@@ -3,6 +3,7 @@ package hush
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 )
@@ -28,13 +29,10 @@ func gcm(key []byte) cipher.AEAD {
 	return gcm
 }
 
-// this is totally insecure. only here for testing
-var nonce = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
-
 // Ciphertext returns a version of this value that's been encrypted with
 // the given key.
 func (v Value) Ciphertext(key []byte) Value {
-
+	// prepare payload
 	gcm := gcm(key)
 	plaintext := []byte(v)
 	n := 1 + // version byte
@@ -44,6 +42,16 @@ func (v Value) Ciphertext(key []byte) Value {
 	data := make([]byte, 0, n)
 	data = append(data, 1) // version number
 
+	// generate nonce
+	n = gcm.NonceSize() + 1
+	nonce := data[1:n]
+	_, err := rand.Read(nonce)
+	if err != nil {
+		panic("generating nonce: " + err.Error())
+	}
+	data = data[:n]
+
+	// encrypt
 	ciphertext := gcm.Seal(nil, nonce, plaintext, data)
 	data = append(data, ciphertext...)
 	return Value(base64.StdEncoding.EncodeToString(data))
@@ -62,10 +70,15 @@ func (v Value) Plaintext(key []byte) Value {
 	if data[0] != 1 {
 		panic(fmt.Sprintf("I only understand version 1, got %d", data[0]))
 	}
-	ciphertext := data[1:] // remove the version number
-	data = data[:1]
 
-	plaintext, err := gcm(key).Open(nil, nonce, ciphertext, data)
+	// extract nonce
+	gcm := gcm(key)
+	n := gcm.NonceSize() + 1
+	nonce := data[1:n]
+	ciphertext := data[n:] // remove version and nonce
+	data = data[:n]
+
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, data)
 	if err != nil {
 		panic("decryption failed: " + err.Error())
 	}
