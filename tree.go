@@ -15,19 +15,28 @@ import (
 
 type T map[Path]Value
 
+const safePerm = 0600 // rw- --- ---
+
 func LoadTree() (T, error) {
 	hushPath, err := hushPath()
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = os.Stat(hushPath)
+	stat, err := os.Stat(hushPath)
 	if os.IsNotExist(err) {
 		warn("hush file does not exist. assuming an empty one")
 		return T{}, nil
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "can't stat hush file")
+	}
+	if (stat.Mode() & os.ModePerm) != safePerm {
+		warn("hush file has loose permissions. fixing.")
+		err := os.Chmod(hushPath, safePerm)
+		if err != nil {
+			die("couldn't fix permissions on hush file")
+		}
 	}
 
 	file, err := os.Open(hushPath)
@@ -201,6 +210,10 @@ func (tree T) Save() error {
 
 	// save to temporary file
 	file, err := ioutil.TempFile("", "hush-")
+	if err != nil {
+		return errors.Wrap(err, "saving tree")
+	}
+	err = os.Chmod(file.Name(), safePerm)
 	if err != nil {
 		return errors.Wrap(err, "saving tree")
 	}
