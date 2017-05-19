@@ -3,7 +3,8 @@ package hush // import "github.com/mndrix/hush"
 import (
 	"fmt"
 	"os"
-	p "path"
+	"path"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -76,7 +77,8 @@ func hushPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return p.Join(home, ".hush"), nil
+	filename := path.Join(home, ".hush")
+	return filepath.EvalSymlinks(filename)
 }
 
 var editorVarNames = []string{
