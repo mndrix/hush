@@ -27,6 +27,10 @@ func Main() {
 
 	switch os.Args[1] {
 	case "import": // hush import
+		err := SetPassphrase(tree)
+		if err != nil {
+			die("%s\n", err.Error())
+		}
 		warnings, err := CmdImport(os.Stdout, os.Stdin, tree)
 		if err != nil {
 			die("%s\n", err.Error())
@@ -35,12 +39,20 @@ func Main() {
 			warn(warning)
 		}
 	case "ls": // hush ls foo/bar
+		err := SetPassphrase(tree)
+		if err != nil {
+			die("%s\n", err.Error())
+		}
 		if len(os.Args) < 3 {
 			tree.Print(os.Stdout)
 			return
 		}
 		CmdLs(os.Stdout, tree, os.Args[2])
 	case "set": // hush set paypal.com/personal/user john@example.com
+		err := SetPassphrase(tree)
+		if err != nil {
+			die("%s\n", err.Error())
+		}
 		p := NewPath(os.Args[2])
 		v, err := captureValue(os.Args[3])
 		if err != nil {
@@ -53,6 +65,12 @@ func Main() {
 	default:
 		die("Usage: hum ...\n")
 	}
+}
+
+func SetPassphrase(t *Tree) error {
+	password := ""
+	t.SetPassphrase(password)
+	return nil
 }
 
 func die(format string, args ...interface{}) {

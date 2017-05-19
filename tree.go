@@ -15,6 +15,8 @@ import (
 
 type Tree struct {
 	tree map[Path]Value
+
+	encryptionKey []byte
 }
 
 const safePerm = 0600 // rw- --- ---
@@ -170,31 +172,36 @@ func (t *Tree) get(p Path) (Value, bool) {
 }
 
 func (t *Tree) set(p Path, val Value) {
-	t.tree[p] = val.Ciphertext(encryptionKey)
+	t.tree[p] = val.Ciphertext(t.encryptionKey)
 }
 
 func (t *Tree) encrypt() {
 	for p, v := range t.tree {
-		t.tree[p] = v.Ciphertext(encryptionKey)
+		t.tree[p] = v.Ciphertext(t.encryptionKey)
 	}
 }
 
-var encryptionKey = []byte(`0123456789abcdef`)
 // Empty returns a copy of this tree with all the keys and values
 // removed.  It retains any other data associated with this tree.
 func (t *Tree) Empty() *Tree {
 	tree := &Tree{
 		tree:          make(map[Path]Value, len(t.tree)),
+		encryptionKey: t.encryptionKey,
 	}
 	return tree
 }
 
+// SetPassphrase sets the password that's used for performing
+// encryption and decryption.
+func (t *Tree) SetPassphrase(password string) {
+	t.encryptionKey = []byte(`0123456789abcdef`)
+}
 
 // Decrypt returns a copy of this tree with all leaves decrypted.
 func (tree *Tree) Decrypt() *Tree {
 	t := tree.Empty()
 	for p, v := range tree.tree {
-		t.tree[p] = v.Plaintext(encryptionKey)
+		t.tree[p] = v.Plaintext(tree.encryptionKey)
 	}
 	return t
 }
