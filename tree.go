@@ -23,7 +23,7 @@ func LoadTree() (T, error) {
 
 	_, err = os.Stat(hushPath)
 	if os.IsNotExist(err) {
-		warn("hush file does not exist. assuming an empty one\n")
+		warn("hush file does not exist. assuming an empty one")
 		return T{}, nil
 	}
 	if err != nil {
