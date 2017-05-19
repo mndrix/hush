@@ -15,6 +15,40 @@ import (
 
 type T map[Path]Value
 
+func LoadTree() (T, error) {
+	hushPath, err := hushPath()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = os.Stat(hushPath)
+	if os.IsNotExist(err) {
+		warn("hush file does not exist. assuming an empty one\n")
+		return T{}, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "can't stat hush file")
+	}
+
+	file, err := os.Open(hushPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "opening hush file")
+	}
+	hushData, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't read hush file")
+	}
+
+	keys := make(yaml.MapSlice, 0)
+	err = yaml.Unmarshal(hushData, &keys)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't parse hush file")
+	}
+	tree := newT(keys)
+	tree.decrypt()
+	return tree, nil
+}
+
 func newT(items yaml.MapSlice) T {
 	t := make(T, 3*len(items))
 	newT_(items, []string{}, t)
@@ -92,6 +126,21 @@ func (t T) filter(pattern string) T {
 		}
 	}
 	return keep
+}
+
+func matches(p Path, pattern string) bool {
+	ps := strings.Split(string(p), "\t")
+	patterns := strings.Split(pattern, "/")
+	if len(patterns) > len(ps) {
+		return false
+	}
+
+	for i, pattern := range patterns {
+		if !strings.Contains(ps[i], pattern) {
+			return false
+		}
+	}
+	return true
 }
 
 func (t T) get(p Path) (Value, bool) {
