@@ -15,15 +15,6 @@ func Main() {
 	if err != nil {
 		die("%s\n", err.Error())
 	}
-	//warn("initial tree = %#v\n", tree)
-
-	if len(os.Args) == 1 {
-		err = tree.Print(os.Stdout)
-		if err != nil {
-			die("%s\n", err.Error())
-		}
-		os.Exit(0)
-	}
 
 	switch os.Args[1] {
 	case "import": // hush import
