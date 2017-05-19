@@ -193,7 +193,7 @@ func (t *Tree) Empty() *Tree {
 
 // SetPassphrase sets the password that's used for performing
 // encryption and decryption.
-func (t *Tree) SetPassphrase(password string) {
+func (t *Tree) SetPassphrase(password []byte) {
 	t.encryptionKey = []byte(`0123456789abcdef`)
 }
 

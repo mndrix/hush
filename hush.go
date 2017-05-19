@@ -6,6 +6,8 @@ import (
 	"path"
 	"path/filepath"
 
+	"golang.org/x/crypto/ssh/terminal"
+
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +21,7 @@ func Main() {
 	// prepare for encryption and decryption
 	err = SetPassphrase(tree)
 	if err != nil {
-		die("%s\n", err.Error())
+		die("SetPassphrase: %s", err.Error())
 	}
 
 	switch os.Args[1] {
@@ -55,13 +57,18 @@ func Main() {
 }
 
 func SetPassphrase(t *Tree) error {
-	password := ""
+	fmt.Fprint(os.Stderr, "Password: ")
+	password, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return err
+	}
+
 	t.SetPassphrase(password)
 	return nil
 }
 
 func die(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
 }
 
