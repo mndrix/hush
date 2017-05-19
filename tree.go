@@ -127,6 +127,10 @@ func (t T) filter(pattern string) T {
 	return keep
 }
 
+func isLowercase(s string) bool {
+	return s == strings.ToLower(s)
+}
+
 func matches(p Path, pattern string) bool {
 	ps := strings.Split(string(p), "\t")
 	patterns := strings.Split(pattern, "/")
@@ -134,8 +138,13 @@ func matches(p Path, pattern string) bool {
 		return false
 	}
 
+	ignoreCase := isLowercase(pattern)
 	for i, pattern := range patterns {
-		if !strings.Contains(ps[i], pattern) {
+		haystack := ps[i]
+		if ignoreCase {
+			haystack = strings.ToLower(haystack)
+		}
+		if !strings.Contains(haystack, pattern) {
 			return false
 		}
 	}
