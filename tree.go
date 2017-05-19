@@ -131,9 +131,7 @@ func mapSlice_(slice yaml.MapSlice, path []string, value string) yaml.MapSlice {
 }
 
 func (t *Tree) filter(pattern string) *Tree {
-	keep := &Tree{
-		tree: make(map[Path]Value),
-	}
+	keep := t.Empty()
 	for p, val := range t.tree {
 		if matches(p, pattern) {
 			keep.tree[p] = val
@@ -182,12 +180,19 @@ func (t *Tree) encrypt() {
 }
 
 var encryptionKey = []byte(`0123456789abcdef`)
+// Empty returns a copy of this tree with all the keys and values
+// removed.  It retains any other data associated with this tree.
+func (t *Tree) Empty() *Tree {
+	tree := &Tree{
+		tree:          make(map[Path]Value, len(t.tree)),
+	}
+	return tree
+}
+
 
 // Decrypt returns a copy of this tree with all leaves decrypted.
 func (tree *Tree) Decrypt() *Tree {
-	t := &Tree{
-		tree: make(map[Path]Value, len(tree.tree)),
-	}
+	t := tree.Empty()
 	for p, v := range tree.tree {
 		t.tree[p] = v.Plaintext(encryptionKey)
 	}
