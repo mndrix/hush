@@ -90,13 +90,20 @@ func home() (string, error) {
 	return home, nil
 }
 
+// hushPath returns the filename of this user's hush file whether it
+// exists or not. If the file doesn't exist, it also returns an error
+// for which os.IsNotExist() is true.
 func hushPath() (string, error) {
 	home, err := home()
 	if err != nil {
 		return "", err
 	}
 	filename := path.Join(home, ".hush")
-	return filepath.EvalSymlinks(filename)
+	f, err := filepath.EvalSymlinks(filename)
+	if err == nil {
+		filename = f
+	}
+	return filename, err
 }
 
 var editorVarNames = []string{
