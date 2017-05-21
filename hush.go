@@ -2,6 +2,7 @@ package hush // import "github.com/mndrix/hush"
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +14,14 @@ import (
 
 // Main implements the main() function of the hush command line tool.
 func Main() {
+	if os.Args[1] == "init" {
+		err := CmdInit(os.Stderr, os.Stdin)
+		if err != nil {
+			die("%s", err.Error())
+		}
+		os.Exit(0)
+	}
+
 	tree, err := LoadTree()
 	if err != nil {
 		die("%s\n", err.Error())
@@ -24,6 +33,7 @@ func Main() {
 		die("SetPassphrase: %s", err.Error())
 	}
 
+	// handle most commands
 	switch os.Args[1] {
 	case "export": // hush export
 		CmdExport(os.Stdout, tree)
