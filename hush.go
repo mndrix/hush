@@ -56,9 +56,15 @@ func Main() {
 	}
 }
 
+func readPassword(w io.Writer, r *os.File, prompt string) ([]byte, error) {
+	io.WriteString(w, prompt)
+	password, err := terminal.ReadPassword(int(r.Fd()))
+	io.WriteString(w, "\n")
+	return password, err
+}
+
 func SetPassphrase(t *Tree) error {
-	fmt.Fprint(os.Stderr, "Password: ")
-	password, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+	password, err := readPassword(os.Stderr, os.Stdin, "Password: ")
 	if err != nil {
 		return err
 	}
