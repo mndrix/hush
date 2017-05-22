@@ -82,7 +82,7 @@ func newT_(items yaml.MapSlice, crumbs []string, t *Tree) {
 			if p.IsPublic() {
 				privacy = Public
 			}
-			t.tree[p] = NewPlaintext([]byte(val), privacy)
+			t.tree[p] = NewEncoded(val, privacy)
 		case yaml.MapSlice:
 			newT_(val, crumbs, t)
 		default:
@@ -179,10 +179,30 @@ func (t *Tree) set(p Path, val *Value) {
 	t.tree[p] = val
 }
 
-func (t *Tree) encrypt() {
-	for p, v := range t.tree {
+// Encrypt returns a copy of this tree with all leaves encrypted.
+func (tree *Tree) Encrypt() *Tree {
+	t := tree.Empty()
+	for p, v := range tree.tree {
+		if p.IsPublic() { // don't encrypt public data
+			t.tree[p] = v
+			continue
+		}
+		if p.IsEncryptionKey() { // value uses different encryption key
+			t.tree[p] = v
+			continue
+		}
 		t.tree[p] = v.Ciphertext(t.encryptionKey)
 	}
+	return t
+}
+
+// Encode returns a copy of this tree with all leaves encoded into base64.
+func (tree *Tree) Encode() *Tree {
+	t := tree.Empty()
+	for p, v := range tree.tree {
+		t.tree[p] = v.Encode()
+	}
+	return t
 }
 
 // Empty returns a copy of this tree with all the keys and values
@@ -233,6 +253,7 @@ func (tree *Tree) Print(w io.Writer) error {
 
 // Save stores a tree to disk for permanent, private archival.
 func (tree *Tree) Save() error {
+	tree = tree.Encrypt().Encode()
 	slice := tree.mapSlice()
 
 	data, err := yaml.Marshal(slice)

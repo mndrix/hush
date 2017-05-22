@@ -42,9 +42,27 @@ func NewCiphertext(v []byte, privacy Privacy) *Value {
 	}
 }
 
+// NewEncoded returns a new value representing an encoded text.  The
+// privacy determines whether it's interpreted as an encoded plaintext
+// or ciphertext.
+func NewEncoded(encoded string, privacy Privacy) *Value {
+	return &Value{
+		privacy: privacy,
+		encoded: encoded,
+	}
+}
+
 func (v *Value) String() string {
-	v = v.Encode()
-	return v.encoded
+	if v.encoded != "" {
+		return v.encoded
+	}
+	if v.plaintext != nil {
+		return string(v.plaintext)
+	}
+	if v.ciphertext != nil {
+		return string(v.ciphertext)
+	}
+	panic(fmt.Sprintf("String: unexpected state: %#v", v))
 }
 
 func gcm(key []byte) cipher.AEAD {
@@ -67,7 +85,7 @@ func (v *Value) Ciphertext(key []byte) *Value {
 		panic("value not encoded correctly: " + err.Error())
 	}
 	if v.ciphertext != nil {
-		panic("attempted double encryption")
+		return v // already encrypted
 	}
 
 	// prepare payload
@@ -103,7 +121,7 @@ func (v *Value) Plaintext(key []byte) *Value {
 		panic(err)
 	}
 	if v.plaintext != nil {
-		panic("attempted double decryption")
+		return v // already decrypted
 	}
 	data := v.ciphertext
 	if len(data) < 1 {
@@ -146,7 +164,7 @@ func (v *Value) Encode() *Value {
 			encoded: base64.StdEncoding.EncodeToString(v.ciphertext),
 		}
 	}
-	panic("Encode: unexpected state")
+	panic(fmt.Sprintf("Encode: unexpected state: %#v", v))
 }
 
 // Decode returns a version of this value that's had all base64
