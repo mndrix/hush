@@ -32,3 +32,15 @@ func (p Path) Parent() Path {
 func (p Path) IsConfiguration() bool {
 	return strings.HasPrefix(string(p), "hush-configuration\t")
 }
+
+// IsPublic returns true if p is a path whose value must be publicly
+// visible.
+func (p Path) IsPublic() bool {
+	return p == "hush-configuration\tsalt"
+}
+
+// IsEncryptionKey returns true if p is the path that stores the
+// user's encryption key.
+func (p Path) IsEncryptionKey() bool {
+	return p == "hush-configuration\tencryption-key"
+}

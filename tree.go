@@ -209,6 +209,10 @@ func (tree *Tree) Decrypt() *Tree {
 			t.tree[p] = v
 			continue
 		}
+		if p.IsEncryptionKey() { // value uses different encryption key
+			t.tree[p] = v
+			continue
+		}
 		t.tree[p] = v.Plaintext(tree.encryptionKey)
 	}
 	return t
@@ -253,6 +257,9 @@ func (tree *Tree) Save() error {
 
 	// move temporary file over top of permanent file
 	hushPath, err := hushPath()
+	if os.IsNotExist(err) {
+		err = nil // we can create the file
+	}
 	if err != nil {
 		return errors.Wrap(err, "saving tree")
 	}
