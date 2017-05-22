@@ -28,7 +28,10 @@ func CmdImport(w io.Writer, r io.Reader, tree *Tree) ([]string, error) {
 			continue
 		}
 		p := NewPath(parts[0])
-		val := NewValue(parts[1])
+		if p.IsConfiguration() {
+			continue
+		}
+		val := NewPlaintext([]byte(parts[1]), Private)
 		tree.set(p, val)
 	}
 	tree.Print(w)

@@ -26,3 +26,9 @@ func (p Path) Parent() Path {
 	}
 	return p
 }
+
+// IsConfiguration returns true if p is a path describing a portion of
+// the tree which belongs to a hush configuration.
+func (p Path) IsConfiguration() bool {
+	return strings.HasPrefix(string(p), "hush-configuration\t")
+}

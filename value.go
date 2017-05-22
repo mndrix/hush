@@ -8,17 +8,43 @@ import (
 	"fmt"
 )
 
-// Value represents a string contained in the leaf of a Tree.
-type Value string
+// Privacy represents the desired level of privacy for a value.
+// Either public or private.
+type Privacy int8
 
-// NewValue returns a new value representing the given plaintext
-// string.
-func NewValue(v string) Value {
-	return Value(v)
+const (
+	_ Privacy = iota // don't use 0. avoid defaulting privacy
+	Public
+	Private
+)
+
+// Value represents a string contained in the leaf of a Tree.
+type Value struct {
+	privacy    Privacy
+	encoded    string // base64 encoded version of the value
+	plaintext  []byte
+	ciphertext []byte
 }
 
-func (v Value) String() string {
-	return string(v)
+// NewPlaintext returns a new value representing the given plaintext.
+func NewPlaintext(v []byte, privacy Privacy) *Value {
+	return &Value{
+		privacy:   privacy,
+		plaintext: v,
+	}
+}
+
+// NewCiphertext returns a new value representing the given plaintext.
+func NewCiphertext(v []byte, privacy Privacy) *Value {
+	return &Value{
+		privacy:    privacy,
+		ciphertext: v,
+	}
+}
+
+func (v *Value) String() string {
+	v = v.Encode()
+	return v.encoded
 }
 
 func gcm(key []byte) cipher.AEAD {
@@ -35,10 +61,18 @@ func gcm(key []byte) cipher.AEAD {
 
 // Ciphertext returns a version of this value that's been encrypted with
 // the given key.
-func (v Value) Ciphertext(key []byte) Value {
+func (v *Value) Ciphertext(key []byte) *Value {
+	v, err := v.Decode()
+	if err != nil {
+		panic("value not encoded correctly: " + err.Error())
+	}
+	if v.ciphertext != nil {
+		panic("attempted double encryption")
+	}
+
 	// prepare payload
 	gcm := gcm(key)
-	plaintext := []byte(v)
+	plaintext := v.plaintext
 	n := 1 + // version byte
 		gcm.NonceSize() + // nonce bytes
 		len(plaintext) + // plaintext size +
@@ -49,7 +83,7 @@ func (v Value) Ciphertext(key []byte) Value {
 	// generate nonce
 	n = gcm.NonceSize() + 1
 	nonce := data[1:n]
-	_, err := rand.Read(nonce)
+	_, err = rand.Read(nonce)
 	if err != nil {
 		panic("generating nonce: " + err.Error())
 	}
@@ -58,16 +92,20 @@ func (v Value) Ciphertext(key []byte) Value {
 	// encrypt
 	ciphertext := gcm.Seal(nil, nonce, plaintext, data)
 	data = append(data, ciphertext...)
-	return Value(base64.StdEncoding.EncodeToString(data))
+	return NewCiphertext(data, Private)
 }
 
 // Plaintext returns a version of this value that's been decrypted with
 // the given key.
-func (v Value) Plaintext(key []byte) Value {
-	data, err := base64.StdEncoding.DecodeString(string(v))
+func (v *Value) Plaintext(key []byte) *Value {
+	v, err := v.Decode()
 	if err != nil {
 		panic(err)
 	}
+	if v.plaintext != nil {
+		panic("attempted double decryption")
+	}
+	data := v.ciphertext
 	if len(data) < 1 {
 		panic("too little data")
 	}
@@ -86,5 +124,53 @@ func (v Value) Plaintext(key []byte) Value {
 	if err != nil {
 		panic("decryption failed: " + err.Error())
 	}
-	return Value(string(plaintext))
+	return NewPlaintext(plaintext, Private)
+}
+
+// Encode returns a version of this value that's been wrapped in
+// base64 encoding.  It's a noop if the value has already been
+// encoded.
+func (v *Value) Encode() *Value {
+	if v.encoded != "" {
+		return v // value is already encoded
+	}
+	if v.privacy == Public && v.plaintext != nil {
+		return &Value{
+			privacy: Public,
+			encoded: base64.StdEncoding.EncodeToString(v.plaintext),
+		}
+	}
+	if v.privacy == Private && v.ciphertext != nil {
+		return &Value{
+			privacy: Private,
+			encoded: base64.StdEncoding.EncodeToString(v.ciphertext),
+		}
+	}
+	panic("Encode: unexpected state")
+}
+
+// Decode returns a version of this value that's had all base64
+// encoding removed. It's a noop if the value has already been
+// decoded.
+func (v *Value) Decode() (*Value, error) {
+	if v.encoded == "" {
+		return v, nil // value is already decoded
+	}
+	decoded, err := base64.StdEncoding.DecodeString(v.encoded)
+	if err != nil {
+		return nil, err
+	}
+	if v.privacy == Public {
+		return &Value{
+			privacy:   Public,
+			plaintext: decoded,
+		}, nil
+	}
+	if v.privacy == Private {
+		return &Value{
+			privacy:    Private,
+			ciphertext: decoded,
+		}, nil
+	}
+	panic("Decode: unexpected state")
 }

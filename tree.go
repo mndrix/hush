@@ -14,7 +14,7 @@ import (
 )
 
 type Tree struct {
-	tree map[Path]Value
+	tree map[Path]*Value
 
 	encryptionKey []byte
 }
@@ -63,7 +63,7 @@ func LoadTree() (*Tree, error) {
 
 func newT(items yaml.MapSlice) *Tree {
 	t := &Tree{
-		tree: make(map[Path]Value, 3*len(items)),
+		tree: make(map[Path]*Value, 3*len(items)),
 	}
 	newT_(items, []string{}, t)
 	return t
@@ -78,7 +78,11 @@ func newT_(items yaml.MapSlice, crumbs []string, t *Tree) {
 		switch val := item.Value.(type) {
 		case string:
 			p := NewPath(strings.Join(crumbs, "/"))
-			t.tree[p] = NewValue(val)
+			privacy := Private
+			if p.IsPublic() {
+				privacy = Public
+			}
+			t.tree[p] = NewPlaintext([]byte(val), privacy)
 		case yaml.MapSlice:
 			newT_(val, crumbs, t)
 		default:
@@ -92,7 +96,7 @@ func (t *Tree) mapSlice() yaml.MapSlice {
 	// sort by key
 	kvs := make([][]string, 0, len(t.tree))
 	for p, val := range t.tree {
-		kvs = append(kvs, []string{string(p), string(val)})
+		kvs = append(kvs, []string{string(p), val.String()})
 	}
 	sort.SliceStable(kvs, func(i, j int) bool {
 		return kvs[i][0] < kvs[j][0]
@@ -166,13 +170,13 @@ func matches(p Path, pattern string) bool {
 	return true
 }
 
-func (t *Tree) get(p Path) (Value, bool) {
+func (t *Tree) get(p Path) (*Value, bool) {
 	val, ok := t.tree[p]
 	return val, ok
 }
 
-func (t *Tree) set(p Path, val Value) {
-	t.tree[p] = val.Ciphertext(t.encryptionKey)
+func (t *Tree) set(p Path, val *Value) {
+	t.tree[p] = val
 }
 
 func (t *Tree) encrypt() {
@@ -185,7 +189,7 @@ func (t *Tree) encrypt() {
 // removed.  It retains any other data associated with this tree.
 func (t *Tree) Empty() *Tree {
 	tree := &Tree{
-		tree:          make(map[Path]Value, len(t.tree)),
+		tree:          make(map[Path]*Value, len(t.tree)),
 		encryptionKey: t.encryptionKey,
 	}
 	return tree
@@ -201,6 +205,10 @@ func (t *Tree) SetPassphrase(password []byte) {
 func (tree *Tree) Decrypt() *Tree {
 	t := tree.Empty()
 	for p, v := range tree.tree {
+		if p.IsPublic() { // don't decrypt public data
+			t.tree[p] = v
+			continue
+		}
 		t.tree[p] = v.Plaintext(tree.encryptionKey)
 	}
 	return t
