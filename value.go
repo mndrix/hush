@@ -26,30 +26,59 @@ type Value struct {
 	ciphertext []byte
 }
 
+// panic if v is malformed
+func (v *Value) validate() {
+	switch v.privacy {
+	case Public, Private:
+		i := 0
+		if len(v.encoded) > 0 {
+			i++
+		}
+		if v.plaintext != nil {
+			i++
+		}
+		if v.ciphertext != nil {
+			i++
+		}
+		if i == 1 {
+			return
+		}
+	}
+
+	err := fmt.Errorf("assertion failed. value is malformed: %#v", v)
+	panic(err)
+}
+
 // NewPlaintext returns a new value representing the given plaintext.
-	return &Value{
 func NewPlaintext(plaintext []byte, privacy Privacy) *Value {
+	v := &Value{
 		privacy:   privacy,
 		plaintext: plaintext,
 	}
+	v.validate()
+	return v
 }
 
 // NewCiphertext returns a new value representing the given plaintext.
-	return &Value{
 func NewCiphertext(ciphertext []byte, privacy Privacy) *Value {
+	v := &Value{
 		privacy:    privacy,
 		ciphertext: ciphertext,
 	}
+	v.validate()
+	return v
 }
 
 // NewEncoded returns a new value representing an encoded text.  The
 // privacy determines whether it's interpreted as an encoded plaintext
 // or ciphertext.
 func NewEncoded(encoded string, privacy Privacy) *Value {
-	return &Value{
+	v := &Value{
 		privacy: privacy,
 		encoded: encoded,
 	}
+	v.validate()
+	return v
 }
 
 func (v *Value) String() string {
@@ -153,16 +182,20 @@ func (v *Value) Encode() *Value {
 		return v // value is already encoded
 	}
 	if v.privacy == Public && v.plaintext != nil {
-		return &Value{
+		v = &Value{
 			privacy: Public,
 			encoded: base64.StdEncoding.EncodeToString(v.plaintext),
 		}
+		v.validate()
+		return v
 	}
 	if v.privacy == Private && v.ciphertext != nil {
-		return &Value{
+		v = &Value{
 			privacy: Private,
 			encoded: base64.StdEncoding.EncodeToString(v.ciphertext),
 		}
+		v.validate()
+		return v
 	}
 	panic(fmt.Sprintf("Encode: unexpected state: %#v", v))
 }
@@ -179,16 +212,20 @@ func (v *Value) Decode() (*Value, error) {
 		return nil, err
 	}
 	if v.privacy == Public {
-		return &Value{
+		v = &Value{
 			privacy:   Public,
 			plaintext: decoded,
-		}, nil
+		}
+		v.validate()
+		return v, nil
 	}
 	if v.privacy == Private {
-		return &Value{
+		v = &Value{
 			privacy:    Private,
 			ciphertext: decoded,
-		}, nil
+		}
+		v.validate()
+		return v, nil
 	}
 	panic("Decode: unexpected state")
 }
