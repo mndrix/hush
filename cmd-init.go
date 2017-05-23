@@ -3,11 +3,9 @@ package hush
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
-	"time"
 )
 
 func CmdInit(w io.Writer, input *os.File) error {
@@ -44,15 +42,7 @@ func CmdInit(w io.Writer, input *os.File) error {
 	if err != nil {
 		panic(err)
 	}
-	start := time.Now()
 	pwKey := stretchPassword(password, salt)
-	fmt.Fprintf(
-		w, "pwKey (%s)\n  salt = %s\n  pass = %s\n  encr = %s\n",
-		time.Since(start),
-		base64.StdEncoding.EncodeToString(salt),
-		base64.StdEncoding.EncodeToString(pwKey),
-		base64.StdEncoding.EncodeToString(encryptionKey),
-	)
 
 	t := newT(nil)
 	p := NewPath("hush-configuration/salt")
