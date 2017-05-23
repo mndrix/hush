@@ -36,13 +36,16 @@ func Main() {
 	// prepare for encryption and decryption
 	err = SetPassphrase(tree)
 	if err != nil {
-		die("SetPassphrase: %s", err.Error())
+		die("%s", err.Error())
 	}
 
 	// handle most commands
 	switch os.Args[1] {
 	case "export": // hush export
-		CmdExport(os.Stdout, tree)
+		err := CmdExport(os.Stdout, tree)
+		if err != nil {
+			die("%s", err.Error())
+		}
 	case "import": // hush import
 		warnings, err := CmdImport(os.Stdout, os.Stdin, tree)
 		if err != nil {
@@ -56,7 +59,10 @@ func Main() {
 			tree.Print(os.Stdout)
 			return
 		}
-		CmdLs(os.Stdout, tree, os.Args[2])
+		err := CmdLs(os.Stdout, tree, os.Args[2])
+		if err != nil {
+			die("%s", err.Error())
+		}
 	case "set": // hush set paypal.com/personal/user john@example.com
 		p := NewPath(os.Args[2])
 		v, err := captureValue(os.Args[3])
@@ -85,8 +91,7 @@ func SetPassphrase(t *Tree) error {
 		return err
 	}
 
-	t.SetPassphrase(password)
-	return nil
+	return t.SetPassphrase(password)
 }
 
 func die(format string, args ...interface{}) {

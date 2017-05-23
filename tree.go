@@ -238,7 +238,10 @@ func (t *Tree) SetPassphrase(password []byte) error {
 	if !ok {
 		return errors.New("hush file missing encryption key")
 	}
-	v = v.Plaintext(pwKey)
+	v, err = v.Plaintext(pwKey)
+	if err != nil {
+		return fmt.Errorf("incorrect password or corrupted hush file")
+	}
 
 	t.encryptionKey = v.plaintext
 	return nil
@@ -246,6 +249,7 @@ func (t *Tree) SetPassphrase(password []byte) error {
 
 // Decrypt returns a copy of this tree with all leaves decrypted.
 func (tree *Tree) Decrypt() *Tree {
+	var err error
 	t := tree.Empty()
 	for p, v := range tree.tree {
 		if p.IsPublic() { // don't decrypt public data
@@ -256,7 +260,10 @@ func (tree *Tree) Decrypt() *Tree {
 			t.tree[p] = v
 			continue
 		}
-		t.tree[p] = v.Plaintext(tree.encryptionKey)
+		t.tree[p], err = v.Plaintext(tree.encryptionKey)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return t
 }

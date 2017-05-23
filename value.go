@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 )
 
@@ -144,20 +145,20 @@ func (v *Value) Ciphertext(key []byte) *Value {
 
 // Plaintext returns a version of this value that's been decrypted with
 // the given key.
-func (v *Value) Plaintext(key []byte) *Value {
+func (v *Value) Plaintext(key []byte) (*Value, error) {
 	v, err := v.Decode()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if v.plaintext != nil {
-		return v // already decrypted
+		return v, nil // already decrypted
 	}
 	data := v.ciphertext
 	if len(data) < 1 {
-		panic("too little data")
+		return nil, errors.New("too little data")
 	}
 	if data[0] != 1 {
-		panic(fmt.Sprintf("I only understand version 1, got %d", data[0]))
+		return nil, fmt.Errorf("I only understand version 1, got %d", data[0])
 	}
 
 	// extract nonce
@@ -169,9 +170,9 @@ func (v *Value) Plaintext(key []byte) *Value {
 
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, data)
 	if err != nil {
-		panic("decryption failed: " + err.Error())
+		return nil, fmt.Errorf("decryption failed: %s", err.Error())
 	}
-	return NewPlaintext(plaintext, Private)
+	return NewPlaintext(plaintext, Private), nil
 }
 
 // Encode returns a version of this value that's been wrapped in
