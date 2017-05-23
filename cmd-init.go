@@ -3,6 +3,7 @@ package hush
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,7 +13,10 @@ func CmdInit(w io.Writer, input *os.File) error {
 	// make sure hush file doesn't exist yet
 	hushFilename, err := hushPath()
 	if !os.IsNotExist(err) {
-		die("A hush file already exists at %s\nYou don't have to run init again", hushFilename)
+		return fmt.Errorf(
+			"A hush file already exists at %s\nYou don't have to run init again",
+			hushFilename,
+		)
 	}
 
 	// prompt for passwords
@@ -21,26 +25,26 @@ func CmdInit(w io.Writer, input *os.File) error {
 	io.WriteString(w, "\n")
 	password, err := readPassword(w, input, "Password: ")
 	if err != nil {
-		die("%s", err)
+		return err
 	}
 	verify, err := readPassword(w, input, "Verify password: ")
 	if err != nil {
-		die("%s", err)
+		return err
 	}
 	if !bytes.Equal(password, verify) {
-		die("Passwords don't match")
+		return errors.New("Passwords don't match")
 	}
 
 	// generate keys
 	encryptionKey := make([]byte, 32) // 256-bit key for AES
 	_, err = rand.Read(encryptionKey)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	salt := make([]byte, 16) // double the RFC8018 minimum
 	_, err = rand.Read(salt)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	pwKey := stretchPassword(password, salt)
 
