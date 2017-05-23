@@ -3,14 +3,11 @@ package hush
 import (
 	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
 	"time"
-
-	"golang.org/x/crypto/pbkdf2"
 )
 
 func CmdInit(w io.Writer, input *os.File) error {
@@ -48,12 +45,7 @@ func CmdInit(w io.Writer, input *os.File) error {
 		panic(err)
 	}
 	start := time.Now()
-	pwKey := pbkdf2.Key(
-		password, salt,
-		2<<15, // iteration count (about 80ms on modern server)
-		32,    // desired key size in bytes
-		sha256.New,
-	)
+	pwKey := stretchPassword(password, salt)
 	fmt.Fprintf(
 		w, "pwKey (%s)\n  salt = %s\n  pass = %s\n  encr = %s\n",
 		time.Since(start),

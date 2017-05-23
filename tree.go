@@ -231,12 +231,7 @@ func (t *Tree) SetPassphrase(password []byte) error {
 		return err
 	}
 	salt := v.plaintext
-	pwKey := pbkdf2.Key(
-		password, salt,
-		2<<15, // iteration count (about 80ms on modern server)
-		32,    // desired key size in bytes
-		sha256.New,
-	)
+	pwKey := stretchPassword(password, salt)
 
 	p = NewPath("hush-configuration/encryption-key")
 	v, ok = t.get(p)
@@ -314,4 +309,16 @@ func (tree *Tree) Save() error {
 	}
 	err = os.Rename(file.Name(), hushPath)
 	return errors.Wrap(err, "saving tree")
+}
+
+// stretchPassword converts a password and a salt into a
+// cryptographically secure key.
+func stretchPassword(password, salt []byte) []byte {
+	pwKey := pbkdf2.Key(
+		password, salt,
+		2<<15, // iteration count (about 80ms on modern server)
+		32,    // desired key size in bytes
+		sha256.New,
+	)
+	return pwKey
 }
