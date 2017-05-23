@@ -228,7 +228,7 @@ func (t *Tree) SetPassphrase(password []byte) error {
 	}
 	v, err := v.Decode()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "decoding salt")
 	}
 	salt := v.plaintext
 	pwKey := stretchPassword(password, salt)
