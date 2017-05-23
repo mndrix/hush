@@ -27,18 +27,18 @@ type Value struct {
 }
 
 // NewPlaintext returns a new value representing the given plaintext.
-func NewPlaintext(v []byte, privacy Privacy) *Value {
 	return &Value{
+func NewPlaintext(plaintext []byte, privacy Privacy) *Value {
 		privacy:   privacy,
-		plaintext: v,
+		plaintext: plaintext,
 	}
 }
 
 // NewCiphertext returns a new value representing the given plaintext.
-func NewCiphertext(v []byte, privacy Privacy) *Value {
 	return &Value{
+func NewCiphertext(ciphertext []byte, privacy Privacy) *Value {
 		privacy:    privacy,
-		ciphertext: v,
+		ciphertext: ciphertext,
 	}
 }
 
