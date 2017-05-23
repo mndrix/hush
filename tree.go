@@ -1,12 +1,15 @@
 package hush
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
+
+	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/pkg/errors"
 
@@ -217,8 +220,33 @@ func (t *Tree) Empty() *Tree {
 
 // SetPassphrase sets the password that's used for performing
 // encryption and decryption.
-func (t *Tree) SetPassphrase(password []byte) {
-	t.encryptionKey = []byte(`0123456789abcdef`)
+func (t *Tree) SetPassphrase(password []byte) error {
+	p := NewPath("hush-configuration/salt")
+	v, ok := t.get(p)
+	if !ok {
+		return errors.New("hush file missing salt")
+	}
+	v, err := v.Decode()
+	if err != nil {
+		return err
+	}
+	salt := v.plaintext
+	pwKey := pbkdf2.Key(
+		password, salt,
+		2<<15, // iteration count (about 80ms on modern server)
+		32,    // desired key size in bytes
+		sha256.New,
+	)
+
+	p = NewPath("hush-configuration/encryption-key")
+	v, ok = t.get(p)
+	if !ok {
+		return errors.New("hush file missing encryption key")
+	}
+	v = v.Plaintext(pwKey)
+
+	t.encryptionKey = v.plaintext
+	return nil
 }
 
 // Decrypt returns a copy of this tree with all leaves decrypted.
