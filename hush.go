@@ -23,6 +23,12 @@ func Main() {
 	}
 
 	tree, err := LoadTree()
+	if os.IsNotExist(err) {
+		filename, _ := hushPath()
+		fmt.Fprintf(os.Stderr, "hush file does not exist: %s\n", filename)
+		fmt.Fprintf(os.Stderr, "Maybe you need to run 'hush init' first?\n")
+		os.Exit(1)
+	}
 	if err != nil {
 		die("%s\n", err.Error())
 	}
