@@ -41,7 +41,8 @@ func (p Path) IsConfiguration() bool {
 // IsPublic returns true if p is a path whose value must be publicly
 // visible.
 func (p Path) IsPublic() bool {
-	return p == "hush-configuration\tsalt"
+	return p == "hush-configuration\tsalt" ||
+		p == "hush-tree-checksum"
 }
 
 // IsEncryptionKey returns true if p is the path that stores the

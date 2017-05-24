@@ -117,26 +117,16 @@ func (t *Tree) Swap(i, j int) {
 	t.index[t.branches[j].path] = j
 }
 
-func (t *Tree) mapSlice(includeChecksum bool) yaml.MapSlice {
+func (t *Tree) mapSlice() yaml.MapSlice {
 	// sort by key
 	sort.Stable(t)
 
-	// update tree's checksum
-	if includeChecksum {
-		mac := hmac.New(sha256.New, t.macKey)
-		for _, branch := range t.branches {
-			mac.Write([]byte(branch.path))
-			mac.Write([]byte(branch.val.String()))
-		}
-		sum := mac.Sum(nil)
-		t.set(
-			NewPath("hush-tree-checksum"),
-			NewPlaintext(sum, Public).Encode(),
-		)
-	}
-
 	var slice yaml.MapSlice
 	for _, branch := range t.branches {
+		if branch.path.IsChecksum() {
+			// skip checksum. it's appended by Save()
+			continue
+		}
 		crumbs := branch.path.AsCrumbs()
 		slice = mapSlice_(slice, crumbs, branch.val.String())
 	}
@@ -167,6 +157,23 @@ func mapSlice_(slice yaml.MapSlice, path []string, value string) yaml.MapSlice {
 	}
 	slice[len(slice)-1].Value = mapSlice_(inner, path[1:], value)
 	return slice
+}
+
+// Checksum returns a cryptographic message authentication code for this tree.
+func (t *Tree) Checksum() []byte {
+	if len(t.macKey) < 32 {
+		panic("trying to calculate checksum without a MAC key")
+	}
+	mac := hmac.New(sha256.New, t.macKey)
+	for _, branch := range t.branches {
+		if branch.path.IsChecksum() {
+			continue // don't checksum the checksum
+		}
+		mac.Write([]byte(branch.path))
+		mac.Write([]byte(branch.val.String()))
+	}
+	sum := mac.Sum(nil)
+	return sum
 }
 
 func (t *Tree) filter(pattern string) *Tree {
@@ -295,6 +302,20 @@ func (t *Tree) SetPassphrase(password []byte) error {
 	}
 	t.macKey = v.plaintext
 
+	// now that we have a password, we can verify the checksum
+	got, ok := t.get(NewPath("hush-tree-checksum"))
+	if !ok {
+		return errors.New("hush file has no checksum")
+	}
+	got, err = got.Decode()
+	if err != nil {
+		return errors.Wrap(err, "decoding checksum")
+	}
+	expect := t.Checksum()
+	if !hmac.Equal(got.plaintext, expect) {
+		return errors.New("checksum doesn't match. file modified without hush command?")
+	}
+
 	return nil
 }
 
@@ -333,7 +354,7 @@ func (tree *Tree) Decrypt() *Tree {
 // Print displays a tree for human consumption.
 func (tree *Tree) Print(w io.Writer) error {
 	tree = tree.Decrypt()
-	slice := tree.mapSlice(false)
+	slice := tree.mapSlice()
 	data, err := yaml.Marshal(slice)
 	if err != nil {
 		return errors.Wrap(err, "printing tree")
@@ -346,7 +367,7 @@ func (tree *Tree) Print(w io.Writer) error {
 // Save stores a tree to disk for permanent, private archival.
 func (tree *Tree) Save() error {
 	tree = tree.Encrypt().Encode()
-	slice := tree.mapSlice(true)
+	slice := tree.mapSlice()
 
 	data, err := yaml.Marshal(slice)
 	if err != nil {
@@ -363,6 +384,9 @@ func (tree *Tree) Save() error {
 		return errors.Wrap(err, "saving tree")
 	}
 	_, err = file.Write(data)
+	io.WriteString(file, "hush-tree-checksum: ")
+	io.WriteString(file, NewPlaintext(tree.Checksum(), Public).Encode().String())
+	io.WriteString(file, "\n")
 	file.Close()
 	if err != nil {
 		return errors.Wrap(err, "saving tree")
