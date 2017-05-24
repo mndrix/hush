@@ -41,6 +41,11 @@ func CmdInit(w io.Writer, input *os.File) error {
 	if err != nil {
 		return err
 	}
+	macKey := make([]byte, 32) // 256-bit key for HMAC
+	_, err = rand.Read(macKey)
+	if err != nil {
+		return err
+	}
 	salt := make([]byte, 16) // double the RFC8018 minimum
 	_, err = rand.Read(salt)
 	if err != nil {
@@ -54,6 +59,10 @@ func CmdInit(w io.Writer, input *os.File) error {
 	t.set(p, v)
 	p = NewPath("hush-configuration/encryption-key")
 	v = NewPlaintext(encryptionKey, Private)
+	v = v.Ciphertext(pwKey)
+	t.set(p, v)
+	p = NewPath("hush-configuration/mac-key")
+	v = NewPlaintext(macKey, Private)
 	v = v.Ciphertext(pwKey)
 	t.set(p, v)
 	err = t.Save()

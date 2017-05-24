@@ -1,6 +1,7 @@
 package hush
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ type Tree struct {
 	tree map[Path]*Value
 
 	encryptionKey []byte
+	macKey        []byte
 }
 
 const safePerm = 0600 // rw- --- ---
@@ -95,15 +97,32 @@ func newT_(items yaml.MapSlice, crumbs []string, t *Tree) {
 	}
 }
 
-func (t *Tree) mapSlice() yaml.MapSlice {
+func (t *Tree) mapSlice(includeChecksum bool) yaml.MapSlice {
 	// sort by key
 	kvs := make([][]string, 0, len(t.tree))
 	for p, val := range t.tree {
+		if p.IsChecksum() {
+			continue
+		}
 		kvs = append(kvs, []string{string(p), val.String()})
 	}
 	sort.SliceStable(kvs, func(i, j int) bool {
 		return kvs[i][0] < kvs[j][0]
 	})
+
+	// update tree's checksum
+	if includeChecksum {
+		mac := hmac.New(sha256.New, t.macKey)
+		for _, kv := range kvs {
+			mac.Write([]byte(kv[0]))
+			mac.Write([]byte(kv[1]))
+		}
+		sum := mac.Sum(nil)
+		kvs = append(kvs, []string{
+			"hush-tree-checksum",
+			NewPlaintext(sum, Public).Encode().encoded,
+		})
+	}
 
 	var slice yaml.MapSlice
 	for _, kv := range kvs {
@@ -240,10 +259,21 @@ func (t *Tree) SetPassphrase(password []byte) error {
 	}
 	v, err = v.Plaintext(pwKey)
 	if err != nil {
-		return fmt.Errorf("incorrect password or corrupted hush file")
+		return fmt.Errorf("incorrect password or corrupted encryption key")
 	}
-
 	t.encryptionKey = v.plaintext
+
+	p = NewPath("hush-configuration/mac-key")
+	v, ok = t.get(p)
+	if !ok {
+		return errors.New("hush file missing MAC key")
+	}
+	v, err = v.Plaintext(pwKey)
+	if err != nil {
+		return fmt.Errorf("incorrect password or corrupted mac key")
+	}
+	t.macKey = v.plaintext
+
 	return nil
 }
 
@@ -260,9 +290,17 @@ func (tree *Tree) Decrypt() *Tree {
 			t.tree[p] = v
 			continue
 		}
+		if p.IsMacKey() { // value uses different encryption key
+			t.tree[p] = v
+			continue
+		}
+		if p.IsChecksum() { // not encrypted at all
+			t.tree[p] = v
+			continue
+		}
 		t.tree[p], err = v.Plaintext(tree.encryptionKey)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s: %s", p, err))
 		}
 	}
 	return t
@@ -271,7 +309,7 @@ func (tree *Tree) Decrypt() *Tree {
 // Print displays a tree for human consumption.
 func (tree *Tree) Print(w io.Writer) error {
 	tree = tree.Decrypt()
-	slice := tree.mapSlice()
+	slice := tree.mapSlice(false)
 	data, err := yaml.Marshal(slice)
 	if err != nil {
 		return errors.Wrap(err, "printing tree")
@@ -284,7 +322,7 @@ func (tree *Tree) Print(w io.Writer) error {
 // Save stores a tree to disk for permanent, private archival.
 func (tree *Tree) Save() error {
 	tree = tree.Encrypt().Encode()
-	slice := tree.mapSlice()
+	slice := tree.mapSlice(true)
 
 	data, err := yaml.Marshal(slice)
 	if err != nil {

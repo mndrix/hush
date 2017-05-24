@@ -44,3 +44,15 @@ func (p Path) IsPublic() bool {
 func (p Path) IsEncryptionKey() bool {
 	return p == "hush-configuration\tencryption-key"
 }
+
+// IsMacKey returns true if p is the path that stores the
+// user's MAC key.
+func (p Path) IsMacKey() bool {
+	return p == "hush-configuration\tmac-key"
+}
+
+// IsChecksum returns true if p is the path that stores the
+// tree's HMAC.
+func (p Path) IsChecksum() bool {
+	return p == "hush-tree-checksum"
+}
