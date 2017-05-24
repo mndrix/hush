@@ -3,7 +3,8 @@ package hush
 import "io"
 
 func CmdExport(w io.Writer, t *Tree) error {
-	for p, v := range t.tree {
+	for _, branch := range t.branches {
+		p, v := branch.path, branch.val
 		v, err := v.Plaintext(t.encryptionKey)
 		if err != nil {
 			return err

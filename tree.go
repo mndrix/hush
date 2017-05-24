@@ -17,8 +17,14 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+type Branch struct {
+	path Path
+	val  *Value
+}
+
 type Tree struct {
-	tree map[Path]*Value
+	branches []Branch
+	index    map[Path]int
 
 	encryptionKey []byte
 	macKey        []byte
@@ -67,25 +73,15 @@ func LoadTree() (*Tree, error) {
 }
 
 func newT(items yaml.MapSlice) *Tree {
-	branches := make([][]string, 0, 3*len(items))
-	branches = newT_(items, []string{}, branches)
-
-	// build tree
 	t := &Tree{
-		tree: make(map[Path]*Value, len(branches)),
+		branches: make([]Branch, 0, 3*len(items)),
+		index:    make(map[Path]int),
 	}
-	for _, branch := range branches {
-		p := NewPath(branch[0])
-		privacy := Private
-		if p.IsPublic() {
-			privacy = Public
-		}
-		t.tree[p] = NewEncoded(branch[1], privacy)
-	}
+	newT_(items, []string{}, t)
 	return t
 }
 
-func newT_(items yaml.MapSlice, crumbs []string, branches [][]string) [][]string {
+func newT_(items yaml.MapSlice, crumbs []string, t *Tree) {
 	n := len(crumbs)
 	for _, item := range items {
 		key := item.Key.(string)
@@ -93,52 +89,56 @@ func newT_(items yaml.MapSlice, crumbs []string, branches [][]string) [][]string
 
 		switch val := item.Value.(type) {
 		case string:
-			branch := []string{
-				strings.Join(crumbs, "/"),
-				val,
+			p := NewPath(strings.Join(crumbs, "/"))
+			privacy := Private
+			if p.IsPublic() {
+				privacy = Public
 			}
-			branches = append(branches, branch)
+			t.set(p, NewEncoded(val, privacy))
 		case yaml.MapSlice:
-			branches = newT_(val, crumbs, branches)
+			newT_(val, crumbs, t)
 		default:
 			panic(fmt.Sprintf("unexpected type: %#v", val))
 		}
 		crumbs = crumbs[:n] // remove final crumb
 	}
-	return branches
+}
+
+// implement sort.Interface interface
+var _ sort.Interface = &Tree{}
+
+func (t *Tree) Len() int { return len(t.branches) }
+func (t *Tree) Less(i, j int) bool {
+	return t.branches[i].path < t.branches[j].path
+}
+func (t *Tree) Swap(i, j int) {
+	t.branches[i], t.branches[j] = t.branches[j], t.branches[i]
+	t.index[t.branches[i].path] = i
+	t.index[t.branches[j].path] = j
 }
 
 func (t *Tree) mapSlice(includeChecksum bool) yaml.MapSlice {
 	// sort by key
-	kvs := make([][]string, 0, len(t.tree))
-	for p, val := range t.tree {
-		if p.IsChecksum() {
-			continue
-		}
-		kvs = append(kvs, []string{string(p), val.String()})
-	}
-	sort.SliceStable(kvs, func(i, j int) bool {
-		return kvs[i][0] < kvs[j][0]
-	})
+	sort.Stable(t)
 
 	// update tree's checksum
 	if includeChecksum {
 		mac := hmac.New(sha256.New, t.macKey)
-		for _, kv := range kvs {
-			mac.Write([]byte(kv[0]))
-			mac.Write([]byte(kv[1]))
+		for _, branch := range t.branches {
+			mac.Write([]byte(branch.path))
+			mac.Write([]byte(branch.val.String()))
 		}
 		sum := mac.Sum(nil)
-		kvs = append(kvs, []string{
-			"hush-tree-checksum",
-			NewPlaintext(sum, Public).Encode().encoded,
-		})
+		t.set(
+			NewPath("hush-tree-checksum"),
+			NewPlaintext(sum, Public).Encode(),
+		)
 	}
 
 	var slice yaml.MapSlice
-	for _, kv := range kvs {
-		path := strings.Split(kv[0], "\t")
-		slice = mapSlice_(slice, path, kv[1])
+	for _, branch := range t.branches {
+		crumbs := branch.path.AsCrumbs()
+		slice = mapSlice_(slice, crumbs, branch.val.String())
 	}
 	return slice
 }
@@ -171,9 +171,9 @@ func mapSlice_(slice yaml.MapSlice, path []string, value string) yaml.MapSlice {
 
 func (t *Tree) filter(pattern string) *Tree {
 	keep := t.Empty()
-	for p, val := range t.tree {
-		if matches(p, pattern) {
-			keep.tree[p] = val
+	for _, branch := range t.branches {
+		if matches(branch.path, pattern) {
+			keep.set(branch.path, branch.val)
 		}
 	}
 	return keep
@@ -204,27 +204,38 @@ func matches(p Path, pattern string) bool {
 }
 
 func (t *Tree) get(p Path) (*Value, bool) {
-	val, ok := t.tree[p]
-	return val, ok
+	i, ok := t.index[p]
+	if ok {
+		return t.branches[i].val, true
+	}
+	return nil, false
 }
 
 func (t *Tree) set(p Path, val *Value) {
-	t.tree[p] = val
+	i, ok := t.index[p]
+	if ok {
+		t.branches[i].val = val
+	} else {
+		t.branches = append(t.branches, Branch{p, val})
+		t.index[p] = len(t.branches) - 1
+	}
 }
 
 // Encrypt returns a copy of this tree with all leaves encrypted.
 func (tree *Tree) Encrypt() *Tree {
 	t := tree.Empty()
-	for p, v := range tree.tree {
+	for _, branch := range tree.branches {
+		p := branch.path
+		v := branch.val
 		if p.IsPublic() { // don't encrypt public data
-			t.tree[p] = v
+			t.set(p, v)
 			continue
 		}
 		if p.IsEncryptionKey() { // value uses different encryption key
-			t.tree[p] = v
+			t.set(p, v)
 			continue
 		}
-		t.tree[p] = v.Ciphertext(t.encryptionKey)
+		t.set(p, v.Ciphertext(t.encryptionKey))
 	}
 	return t
 }
@@ -232,8 +243,8 @@ func (tree *Tree) Encrypt() *Tree {
 // Encode returns a copy of this tree with all leaves encoded into base64.
 func (tree *Tree) Encode() *Tree {
 	t := tree.Empty()
-	for p, v := range tree.tree {
-		t.tree[p] = v.Encode()
+	for _, branch := range tree.branches {
+		t.set(branch.path, branch.val.Encode())
 	}
 	return t
 }
@@ -241,11 +252,10 @@ func (tree *Tree) Encode() *Tree {
 // Empty returns a copy of this tree with all the keys and values
 // removed.  It retains any other data associated with this tree.
 func (t *Tree) Empty() *Tree {
-	tree := &Tree{
-		tree:          make(map[Path]*Value, len(t.tree)),
-		encryptionKey: t.encryptionKey,
-	}
-	return tree
+	tree := *t // shallow copy
+	tree.branches = make([]Branch, 0, len(t.branches))
+	tree.index = make(map[Path]int, len(t.branches))
+	return &tree
 }
 
 // SetPassphrase sets the password that's used for performing
@@ -292,27 +302,30 @@ func (t *Tree) SetPassphrase(password []byte) error {
 func (tree *Tree) Decrypt() *Tree {
 	var err error
 	t := tree.Empty()
-	for p, v := range tree.tree {
+	for _, branch := range tree.branches {
+		p := branch.path
+		v := branch.val
 		if p.IsPublic() { // don't decrypt public data
-			t.tree[p] = v
+			t.set(p, v)
 			continue
 		}
 		if p.IsEncryptionKey() { // value uses different encryption key
-			t.tree[p] = v
+			t.set(p, v)
 			continue
 		}
 		if p.IsMacKey() { // value uses different encryption key
-			t.tree[p] = v
+			t.set(p, v)
 			continue
 		}
 		if p.IsChecksum() { // not encrypted at all
-			t.tree[p] = v
+			t.set(p, v)
 			continue
 		}
-		t.tree[p], err = v.Plaintext(tree.encryptionKey)
+		v, err = v.Plaintext(tree.encryptionKey)
 		if err != nil {
 			panic(fmt.Sprintf("%s: %s", p, err))
 		}
+		t.set(p, v)
 	}
 	return t
 }

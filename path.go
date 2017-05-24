@@ -17,6 +17,11 @@ func (p Path) AsPattern() string {
 	return strings.Replace(string(p), "\t", "/", -1)
 }
 
+// AsCrumbs returns this path as a slice of separate path components.
+func (p Path) AsCrumbs() []string {
+	return strings.Split(string(p), "\t")
+}
+
 // Parent returns a path pointing to the parent of this path.  If the
 // path has no parent, returns itself.
 func (p Path) Parent() Path {
