@@ -67,14 +67,25 @@ func LoadTree() (*Tree, error) {
 }
 
 func newT(items yaml.MapSlice) *Tree {
+	branches := make([][]string, 0, 3*len(items))
+	branches = newT_(items, []string{}, branches)
+
+	// build tree
 	t := &Tree{
-		tree: make(map[Path]*Value, 3*len(items)),
+		tree: make(map[Path]*Value, len(branches)),
 	}
-	newT_(items, []string{}, t)
+	for _, branch := range branches {
+		p := NewPath(branch[0])
+		privacy := Private
+		if p.IsPublic() {
+			privacy = Public
+		}
+		t.tree[p] = NewEncoded(branch[1], privacy)
+	}
 	return t
 }
 
-func newT_(items yaml.MapSlice, crumbs []string, t *Tree) {
+func newT_(items yaml.MapSlice, crumbs []string, branches [][]string) [][]string {
 	n := len(crumbs)
 	for _, item := range items {
 		key := item.Key.(string)
@@ -82,19 +93,19 @@ func newT_(items yaml.MapSlice, crumbs []string, t *Tree) {
 
 		switch val := item.Value.(type) {
 		case string:
-			p := NewPath(strings.Join(crumbs, "/"))
-			privacy := Private
-			if p.IsPublic() {
-				privacy = Public
+			branch := []string{
+				strings.Join(crumbs, "/"),
+				val,
 			}
-			t.tree[p] = NewEncoded(val, privacy)
+			branches = append(branches, branch)
 		case yaml.MapSlice:
-			newT_(val, crumbs, t)
+			branches = newT_(val, crumbs, branches)
 		default:
 			panic(fmt.Sprintf("unexpected type: %#v", val))
 		}
 		crumbs = crumbs[:n] // remove final crumb
 	}
+	return branches
 }
 
 func (t *Tree) mapSlice(includeChecksum bool) yaml.MapSlice {
