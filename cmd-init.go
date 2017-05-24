@@ -54,6 +54,8 @@ func CmdInit(w io.Writer, input *os.File) error {
 	pwKey := stretchPassword(password, salt)
 
 	t := newT(nil)
+	t.encryptionKey = encryptionKey
+	t.macKey = macKey
 	p := NewPath("hush-configuration/salt")
 	v := NewPlaintext(salt, Public)
 	t.set(p, v)

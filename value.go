@@ -96,6 +96,9 @@ func (v *Value) String() string {
 }
 
 func gcm(key []byte) cipher.AEAD {
+	if len(key) < 32 {
+		panic("no key given")
+	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
@@ -110,6 +113,9 @@ func gcm(key []byte) cipher.AEAD {
 // Ciphertext returns a version of this value that's been encrypted with
 // the given key.
 func (v *Value) Ciphertext(key []byte) *Value {
+	if len(key) < 32 {
+		panic("no key given")
+	}
 	v, err := v.Decode()
 	if err != nil {
 		panic("value not encoded correctly: " + err.Error())
@@ -146,6 +152,9 @@ func (v *Value) Ciphertext(key []byte) *Value {
 // Plaintext returns a version of this value that's been decrypted with
 // the given key.
 func (v *Value) Plaintext(key []byte) (*Value, error) {
+	if len(key) < 32 {
+		panic("no key given")
+	}
 	v, err := v.Decode()
 	if err != nil {
 		return nil, err
