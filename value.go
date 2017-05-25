@@ -177,7 +177,7 @@ func (v *Value) Plaintext(key []byte) (*Value, error) {
 	ciphertext := data[n:] // remove version and nonce
 	data = data[:n]
 
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, data)
+	plaintext, err := gcm.Open([]byte{}, nonce, ciphertext, data)
 	if err != nil {
 		return nil, fmt.Errorf("decryption failed: %s", err.Error())
 	}
