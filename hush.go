@@ -64,8 +64,11 @@ func Main() {
 			die("%s", err.Error())
 		}
 	case "rm": // hush rm paypal.com/personal
-		p := NewPath(os.Args[2])
-		CmdRm(tree, p)
+		paths := make([]Path, len(os.Args)-2)
+		for i := 2; i < len(os.Args); i++ {
+			paths[i-2] = NewPath(os.Args[i])
+		}
+		CmdRm(tree, paths)
 		if err != nil {
 			die("%s\n", err.Error())
 		}
