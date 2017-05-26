@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 
@@ -81,6 +82,18 @@ func readPassword(w io.Writer, prompt string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if askpass := os.Getenv("HUSH_ASKPASS"); askpass != "" {
+		cmd := exec.Command(askpass, prompt)
+		cmd.Stdin = tty
+		cmd.Stderr = os.Stderr
+		password, err := cmd.Output()
+		if err != nil {
+			return nil, err
+		}
+		return password, nil
+	}
+
 	io.WriteString(w, prompt)
 	io.WriteString(w, ": ")
 	password, err := terminal.ReadPassword(int(tty.Fd()))
