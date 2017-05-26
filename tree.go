@@ -25,6 +25,7 @@ type Branch struct {
 type Tree struct {
 	branches []Branch
 	index    map[Path]int
+	free     map[int]bool
 
 	encryptionKey []byte
 	macKey        []byte
@@ -109,17 +110,43 @@ var _ sort.Interface = &Tree{}
 
 func (t *Tree) Len() int { return len(t.branches) }
 func (t *Tree) Less(i, j int) bool {
+	// sort free branches to the end
+	if t.free[i] {
+		return false
+	}
+	if t.free[j] {
+		return true
+	}
+
 	return t.branches[i].path < t.branches[j].path
 }
 func (t *Tree) Swap(i, j int) {
 	t.branches[i], t.branches[j] = t.branches[j], t.branches[i]
 	t.index[t.branches[i].path] = i
 	t.index[t.branches[j].path] = j
+
+	iFree, jFree := t.free[i], t.free[j]
+	delete(t.free, i)
+	delete(t.free, j)
+	if iFree {
+		t.free[j] = true
+	}
+	if jFree {
+		t.free[i] = true
+	}
 }
 
 // Sort sorts the tree in place and defragments any deleted branches.
 func (t *Tree) Sort() {
 	sort.Stable(t)
+
+	// trim deleted branches
+	for i := range t.branches {
+		if t.free[i] {
+			t.branches = t.branches[0:i]
+			break
+		}
+	}
 }
 
 func (t *Tree) mapSlice() yaml.MapSlice {
@@ -230,12 +257,33 @@ func (t *Tree) set(p Path, val *Value) {
 	}
 }
 
+// Delete removes a path and all its descendants from the tree.  Returns
+// the number of branches removed.
+func (t *Tree) Delete(p Path) int {
+	n := 0
+	for i, branch := range t.branches {
+		if p == branch.path || p.HasDescendant(branch.path) {
+			t.branches[i] = Branch{}
+			delete(t.index, p)
+			if t.free == nil {
+				t.free = make(map[int]bool)
+			}
+			t.free[i] = true
+			n++
+		}
+	}
+	return n
+}
+
 // Encrypt returns a copy of this tree with all leaves encrypted.
 func (tree *Tree) Encrypt() *Tree {
 	t := tree.Empty()
 	for _, branch := range tree.branches {
 		p := branch.path
 		v := branch.val
+		if v == nil {
+			panic("trimming didn't remove any empty branch")
+		}
 		if p.IsPublic() { // don't encrypt public data
 			t.set(p, v)
 			continue

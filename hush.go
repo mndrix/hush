@@ -63,6 +63,12 @@ func Main() {
 		if err != nil {
 			die("%s", err.Error())
 		}
+	case "rm": // hush rm paypal.com/personal
+		p := NewPath(os.Args[2])
+		CmdRm(tree, p)
+		if err != nil {
+			die("%s\n", err.Error())
+		}
 	case "set": // hush set paypal.com/personal/user john@example.com
 		p := NewPath(os.Args[2])
 		v, err := captureValue(os.Args[3])

@@ -32,6 +32,15 @@ func (p Path) Parent() Path {
 	return p
 }
 
+// HasDescendant returns true if p is the parent of d.
+func (p Path) HasDescendant(d Path) bool {
+	n := len(p)
+	if len(d) > n && strings.HasPrefix(string(d), string(p)) {
+		return d[n] == '\t'
+	}
+	return false
+}
+
 // IsConfiguration returns true if p is a path describing a portion of
 // the tree which belongs to a hush configuration.
 func (p Path) IsConfiguration() bool {
