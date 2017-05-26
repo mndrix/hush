@@ -123,8 +123,6 @@ func (t *Tree) Sort() {
 }
 
 func (t *Tree) mapSlice() yaml.MapSlice {
-	t.Sort()
-
 	var slice yaml.MapSlice
 	for _, branch := range t.branches {
 		if branch.path.IsChecksum() {
@@ -357,6 +355,7 @@ func (tree *Tree) Decrypt() *Tree {
 
 // Print displays a tree for human consumption.
 func (tree *Tree) Print(w io.Writer) error {
+	tree.Sort()
 	tree = tree.Decrypt()
 	slice := tree.mapSlice()
 	data, err := yaml.Marshal(slice)
@@ -370,6 +369,7 @@ func (tree *Tree) Print(w io.Writer) error {
 
 // Save stores a tree to disk for permanent, private archival.
 func (tree *Tree) Save() error {
+	tree.Sort()
 	tree = tree.Encrypt().Encode()
 	slice := tree.mapSlice()
 
