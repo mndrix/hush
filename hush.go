@@ -42,15 +42,10 @@ func Main() {
 	// handle most commands
 	switch os.Args[1] {
 	case "export": // hush export
-		err := CmdExport(os.Stdout, tree)
-		if err != nil {
-			die("%s", err.Error())
-		}
+		err = CmdExport(os.Stdout, tree)
 	case "import": // hush import
-		warnings, err := CmdImport(os.Stdout, os.Stdin, tree)
-		if err != nil {
-			die("%s\n", err.Error())
-		}
+		var warnings []string
+		warnings, err = CmdImport(os.Stdout, os.Stdin, tree)
 		for _, warning := range warnings {
 			warn(warning)
 		}
@@ -59,19 +54,13 @@ func Main() {
 			tree.Print(os.Stdout)
 			return
 		}
-		err := CmdLs(os.Stdout, tree, os.Args[2])
-		if err != nil {
-			die("%s", err.Error())
-		}
+		err = CmdLs(os.Stdout, tree, os.Args[2])
 	case "rm": // hush rm paypal.com/personal
 		paths := make([]Path, len(os.Args)-2)
 		for i := 2; i < len(os.Args); i++ {
 			paths[i-2] = NewPath(os.Args[i])
 		}
-		CmdRm(tree, paths)
-		if err != nil {
-			die("%s\n", err.Error())
-		}
+		err = CmdRm(tree, paths)
 	case "set": // hush set paypal.com/personal/user john@example.com
 		p := NewPath(os.Args[2])
 		v, err := captureValue(os.Args[3])
@@ -79,11 +68,11 @@ func Main() {
 			die("%s\n", err.Error())
 		}
 		err = CmdSet(os.Stdout, tree, p, v)
-		if err != nil {
-			die("%s\n", err.Error())
-		}
 	default:
 		die("Usage: hum ...\n")
+	}
+	if err != nil {
+		die("%s", err.Error())
 	}
 }
 
