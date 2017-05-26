@@ -12,8 +12,8 @@ func NewPath(uiPath string) Path {
 	return Path(strings.Replace(uiPath, "/", "\t", -1))
 }
 
-// AsPattern this path as a slash-separated pattern.
-func (p Path) AsPattern() string {
+// String returns this path as a slash-separated path string.
+func (p Path) String() string {
 	return strings.Replace(string(p), "\t", "/", -1)
 }
 

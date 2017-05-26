@@ -10,7 +10,7 @@ func CmdExport(w io.Writer, t *Tree) error {
 			return err
 		}
 
-		io.WriteString(w, p.AsPattern())
+		io.WriteString(w, p.String())
 		io.WriteString(w, "\t")
 		io.WriteString(w, v.String())
 		io.WriteString(w, "\n")
