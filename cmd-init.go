@@ -23,11 +23,11 @@ func CmdInit(w io.Writer, input *os.File) error {
 	io.WriteString(w, "Preparing to initialize your hush file. Please provide\n")
 	io.WriteString(w, "and verify a password to use for encryption.\n")
 	io.WriteString(w, "\n")
-	password, err := readPassword(w, "Password: ")
+	password, err := readPassword(w, "Password")
 	if err != nil {
 		return err
 	}
-	verify, err := readPassword(w, "Verify password: ")
+	verify, err := readPassword(w, "Verify password")
 	if err != nil {
 		return err
 	}

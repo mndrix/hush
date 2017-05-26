@@ -82,13 +82,14 @@ func readPassword(w io.Writer, prompt string) ([]byte, error) {
 		return nil, err
 	}
 	io.WriteString(w, prompt)
+	io.WriteString(w, ": ")
 	password, err := terminal.ReadPassword(int(tty.Fd()))
 	io.WriteString(w, "\n")
 	return password, err
 }
 
 func SetPassphrase(t *Tree) error {
-	password, err := readPassword(os.Stderr, "Password: ")
+	password, err := readPassword(os.Stderr, "Password")
 	if err != nil {
 		return err
 	}
