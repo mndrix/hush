@@ -117,9 +117,13 @@ func (t *Tree) Swap(i, j int) {
 	t.index[t.branches[j].path] = j
 }
 
-func (t *Tree) mapSlice() yaml.MapSlice {
-	// sort by key
+// Sort sorts the tree in place and defragments any deleted branches.
+func (t *Tree) Sort() {
 	sort.Stable(t)
+}
+
+func (t *Tree) mapSlice() yaml.MapSlice {
+	t.Sort()
 
 	var slice yaml.MapSlice
 	for _, branch := range t.branches {
