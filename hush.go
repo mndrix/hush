@@ -119,6 +119,11 @@ func home() (string, error) {
 // exists or not. If the file doesn't exist, it also returns an error
 // for which os.IsNotExist() is true.
 func hushPath() (string, error) {
+	if env := os.Getenv("HUSH_FILE"); env != "" {
+		_, err := os.Stat(env)
+		return env, err
+	}
+
 	home, err := home()
 	if err != nil {
 		return "", err
