@@ -51,7 +51,7 @@ func LoadTree() (*Tree, error) {
 		warn("hush file has loose permissions. fixing.")
 		err := os.Chmod(hushPath, safePerm)
 		if err != nil {
-			die("couldn't fix permissions on hush file")
+			return nil, errors.Wrap(err, "can't fix permissions on hush file")
 		}
 	}
 
