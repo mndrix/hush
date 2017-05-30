@@ -3,10 +3,6 @@ package hush // import "github.com/mndrix/hush"
 import (
 	"fmt"
 	"os"
-	"path"
-	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 // Main implements the main() function of the hush command line tool.
@@ -21,7 +17,7 @@ func Main() {
 
 	tree, err := LoadTree()
 	if os.IsNotExist(err) {
-		filename, _ := hushPath()
+		filename, _ := HushPath()
 		fmt.Fprintf(os.Stderr, "hush file does not exist: %s\n", filename)
 		fmt.Fprintf(os.Stderr, "Maybe you need to run 'hush init' first?\n")
 		os.Exit(1)
@@ -89,35 +85,6 @@ func die(format string, args ...interface{}) {
 
 func warn(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
-}
-
-func home() (string, error) {
-	home := os.Getenv("HOME")
-	if home == "" {
-		return "", errors.New("Point $HOME at your home directory")
-	}
-	return home, nil
-}
-
-// hushPath returns the filename of this user's hush file whether it
-// exists or not. If the file doesn't exist, it also returns an error
-// for which os.IsNotExist() is true.
-func hushPath() (string, error) {
-	if env := os.Getenv("HUSH_FILE"); env != "" {
-		_, err := os.Stat(env)
-		return env, err
-	}
-
-	home, err := home()
-	if err != nil {
-		return "", err
-	}
-	filename := path.Join(home, ".hush")
-	f, err := filepath.EvalSymlinks(filename)
-	if err == nil {
-		filename = f
-	}
-	return filename, err
 }
 
 var editorVarNames = []string{

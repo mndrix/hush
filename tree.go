@@ -34,7 +34,7 @@ type Tree struct {
 const safePerm = 0600 // rw- --- ---
 
 func LoadTree() (*Tree, error) {
-	hushPath, err := hushPath()
+	hushPath, err := HushPath()
 	if err != nil {
 		return nil, err
 	}
@@ -447,7 +447,7 @@ func (tree *Tree) Save() error {
 	}
 
 	// move temporary file over top of permanent file
-	hushPath, err := hushPath()
+	hushPath, err := HushPath()
 	if os.IsNotExist(err) {
 		err = nil // we can create the file
 	}

@@ -11,7 +11,7 @@ import (
 
 func CmdInit(w io.Writer, input *os.File) error {
 	// make sure hush file doesn't exist yet
-	hushFilename, err := hushPath()
+	hushFilename, err := HushPath()
 	if !os.IsNotExist(err) {
 		return fmt.Errorf(
 			"A hush file already exists at %s\nNo need to run init",
