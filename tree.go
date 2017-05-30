@@ -205,7 +205,9 @@ func (t *Tree) Checksum() []byte {
 	return sum
 }
 
-func (t *Tree) filter(pattern string) *Tree {
+// Filter returns a subtree whose branches all match the given
+// pattern.
+func (t *Tree) Filter(pattern string) *Tree {
 	keep := t.Empty()
 	for _, branch := range t.branches {
 		if matches(branch.path, pattern) {
