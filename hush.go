@@ -56,7 +56,7 @@ func Main() {
 		err = CmdRm(tree, paths)
 	case "set": // hush set paypal.com/personal/user john@example.com
 		p := NewPath(os.Args[2])
-		v, err := captureValue(os.Args[3])
+		v, err := CaptureValue(os.Args[3])
 		if err != nil {
 			die("%s\n", err.Error())
 		}
@@ -85,23 +85,4 @@ func die(format string, args ...interface{}) {
 
 func warn(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
-}
-
-var editorVarNames = []string{
-	"HUSH_EDITOR",
-	"VISUAL",
-	"EDITOR",
-}
-
-func editor() string {
-	for _, varName := range editorVarNames {
-		ed := os.Getenv(varName)
-		if ed != "" {
-			return ed
-		}
-	}
-
-	ed := "vi"
-	warn("environment configures no editor. defaulting to %s", ed)
-	return ed
 }

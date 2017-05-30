@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 )
 
 // Privacy represents the desired level of privacy for a value.
@@ -80,6 +82,22 @@ func NewEncoded(encoded string, privacy Privacy) *Value {
 	}
 	v.validate()
 	return v
+}
+
+// CaptureValue converts a command line argument into a value. It
+// handles sugar such as "-" (meaning "capture a value from stdin").
+// The captured value is assumed to be private.
+func CaptureValue(s string) (*Value, error) {
+	var plaintext []byte
+	var err error
+
+	if s == "-" {
+		plaintext, err = ioutil.ReadAll(os.Stdin)
+	} else {
+		plaintext = []byte(s)
+	}
+
+	return NewPlaintext(plaintext, Private), err
 }
 
 func (v *Value) String() string {
