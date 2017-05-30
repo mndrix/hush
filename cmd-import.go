@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,17 +15,23 @@ import (
 //
 // This function implements "hush import"
 func CmdImport(r io.Reader, tree *Tree) ([]string, error) {
+	var n int
 	var warnings []string
+	warnf := func(format string, args ...interface{}) {
+		format = "line " + strconv.Itoa(n) + ": " + format
+		msg := fmt.Sprintf(format, args...)
+		warnings = append(warnings, msg)
+	}
+
 	scanner := bufio.NewScanner(r)
-	for n := 1; scanner.Scan(); n++ {
+	for n = 1; scanner.Scan(); n++ {
 		txt := scanner.Text()
 		if txt == "" {
 			continue
 		}
 		parts := strings.SplitN(txt, "\t", 2)
 		if len(parts) < 2 {
-			msg := fmt.Sprintf("line %d missing tab delimiter", n)
-			warnings = append(warnings, msg)
+			warnf("missing tab delimiter")
 			continue
 		}
 		p := NewPath(parts[0])
@@ -35,5 +42,5 @@ func CmdImport(r io.Reader, tree *Tree) ([]string, error) {
 		tree.set(p, val)
 	}
 	err := tree.Save()
-	return nil, errors.Wrap(err, "import")
+	return warnings, errors.Wrap(err, "import")
 }
