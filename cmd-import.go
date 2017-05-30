@@ -36,6 +36,7 @@ func CmdImport(r io.Reader, tree *Tree) ([]string, error) {
 		}
 		p := NewPath(parts[0])
 		if p.IsConfiguration() {
+			warnf("skipping configuration path %s", p)
 			continue
 		}
 		val := NewPlaintext([]byte(parts[1]), Private)
