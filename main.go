@@ -38,7 +38,7 @@ func Main() {
 		err = CmdExport(os.Stdout, tree)
 	case "import": // hush import
 		var warnings []string
-		warnings, err = CmdImport(os.Stdout, os.Stdin, tree)
+		warnings, err = CmdImport(os.Stdin, tree)
 		for _, warning := range warnings {
 			warn(warning)
 		}
