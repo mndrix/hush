@@ -12,7 +12,7 @@ func Main() {
 		if err != nil {
 			die("%s", err.Error())
 		}
-		os.Exit(0)
+		return
 	}
 
 	tree, err := LoadTree()
