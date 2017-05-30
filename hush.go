@@ -19,11 +19,11 @@ func Main() {
 	if os.IsNotExist(err) {
 		filename, _ := HushPath()
 		fmt.Fprintf(os.Stderr, "hush file does not exist: %s\n", filename)
-		fmt.Fprintf(os.Stderr, "Maybe you need to run 'hush init' first?\n")
+		fmt.Fprintf(os.Stderr, "Maybe you need to run 'hush init'?\n")
 		os.Exit(1)
 	}
 	if err != nil {
-		die("%s\n", err.Error())
+		die("%s", err.Error())
 	}
 
 	// prepare for encryption and decryption
@@ -58,11 +58,11 @@ func Main() {
 		p := NewPath(os.Args[2])
 		v, err := CaptureValue(os.Args[3])
 		if err != nil {
-			die("%s\n", err.Error())
+			die("%s", err.Error())
 		}
 		err = CmdSet(os.Stdout, tree, p, v)
 	default:
-		die("Usage: hum ...\n")
+		die("Usage: hush ...")
 	}
 	if err != nil {
 		die("%s", err.Error())
