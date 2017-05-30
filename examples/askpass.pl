@@ -24,6 +24,7 @@ print STDERR "askpass: $ARGV[0]: ";
 ReadMode('noecho');
 my $password = <STDIN>;
 ReadMode('normal');
+print STDERR "\n";
 chomp $password;
 print $password;  # output password for hush to read
 
