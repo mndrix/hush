@@ -69,7 +69,7 @@ func CmdInit(w io.Writer, input *os.File) error {
 	t.set(p, v)
 	err = t.Save()
 	if err != nil {
-		die("%s", err)
+		return err
 	}
 
 	fmt.Fprintf(w, "Hush file created at %s\n", hushFilename)
