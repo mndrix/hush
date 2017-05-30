@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CmdImport reads import lines from r adding the path-value pairs to
-// tree.  Returns a slice of warnings, if any.
+// CmdImport reads tab-separated lines from r adding the path-value
+// pairs to tree.  Returns a slice of warnings, if any.
 //
-// This function implements "hush import"
+// This function implements "hush import".
 func CmdImport(r io.Reader, tree *Tree) ([]string, error) {
 	var n int
 	var warnings []string
