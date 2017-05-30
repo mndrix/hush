@@ -9,6 +9,11 @@ import (
 	"os"
 )
 
+// CmdInit initializes the user's hush file, if it does not exist.
+// Informative user messages are written to w. User input, if needed,
+// is taken from input.
+//
+// This function implements "hush init"
 func CmdInit(w io.Writer, input *os.File) error {
 	// make sure hush file doesn't exist yet
 	hushFilename, err := HushPath()
