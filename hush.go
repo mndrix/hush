@@ -2,13 +2,9 @@ package hush // import "github.com/mndrix/hush"
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
-
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pkg/errors"
 )
@@ -35,7 +31,7 @@ func Main() {
 	}
 
 	// prepare for encryption and decryption
-	err = SetPassphrase(tree)
+	err = setPassphrase(tree)
 	if err != nil {
 		die("%s", err.Error())
 	}
@@ -77,32 +73,8 @@ func Main() {
 	}
 }
 
-func readPassword(w io.Writer, prompt string) ([]byte, error) {
-	tty, err := os.Open("/dev/tty")
-	if err != nil {
-		return nil, err
-	}
-
-	if askpass := os.Getenv("HUSH_ASKPASS"); askpass != "" {
-		cmd := exec.Command(askpass, prompt)
-		cmd.Stdin = tty
-		cmd.Stderr = os.Stderr
-		password, err := cmd.Output()
-		if err != nil {
-			return nil, err
-		}
-		return password, nil
-	}
-
-	io.WriteString(w, prompt)
-	io.WriteString(w, ": ")
-	password, err := terminal.ReadPassword(int(tty.Fd()))
-	io.WriteString(w, "\n")
-	return password, err
-}
-
-func SetPassphrase(t *Tree) error {
-	password, err := readPassword(os.Stderr, "Password")
+func setPassphrase(t *Tree) error {
+	password, err := AskPassword(os.Stderr, "Password")
 	if err != nil {
 		return err
 	}
