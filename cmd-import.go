@@ -34,7 +34,6 @@ func CmdImport(w io.Writer, r io.Reader, tree *Tree) ([]string, error) {
 		val := NewPlaintext([]byte(parts[1]), Private)
 		tree.set(p, val)
 	}
-	tree.Print(w)
 	err := tree.Save()
 	return nil, errors.Wrap(err, "import")
 }
