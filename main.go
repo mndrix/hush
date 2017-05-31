@@ -7,6 +7,11 @@ import (
 
 // Main implements the main() function of the hush command line tool.
 func Main() {
+	if len(os.Args) < 2 {
+		usage()
+		return
+	}
+
 	if os.Args[1] == "init" {
 		err := CmdInit(os.Stderr, os.Stdin)
 		if err != nil {
@@ -62,11 +67,15 @@ func Main() {
 		}
 		err = CmdSet(os.Stdout, tree, p, v)
 	default:
-		die("Usage: hush ...")
+		usage()
 	}
 	if err != nil {
 		die("%s", err.Error())
 	}
+}
+
+func usage() {
+	die("Usage: hush [command [arguments]]")
 }
 
 func setPassphrase(t *Tree) error {
