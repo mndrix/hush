@@ -261,7 +261,7 @@ func (t *Tree) set(p Path, val *Value) {
 
 // Delete removes a path and all its descendants from the tree.  Returns
 // the number of branches removed.
-func (t *Tree) Delete(paths []Path) int {
+func (t *Tree) Delete(paths ...Path) int {
 	n := 0
 	for _, p := range paths {
 		for i, branch := range t.branches {
