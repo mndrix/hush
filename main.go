@@ -13,7 +13,11 @@ func Main() {
 	}
 
 	// handle init command before loading tree
-	if os.Args[1] == "init" {
+	switch os.Args[1] {
+	case "help":
+		CmdHelp(os.Stdout)
+		return
+	case "init":
 		err := CmdInit(os.Stderr, os.Stdin)
 		if err != nil {
 			die("%s", err.Error())
