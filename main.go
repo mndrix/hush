@@ -12,6 +12,7 @@ func Main() {
 		return
 	}
 
+	// handle init command before loading tree
 	if os.Args[1] == "init" {
 		err := CmdInit(os.Stderr, os.Stdin)
 		if err != nil {
@@ -20,6 +21,7 @@ func Main() {
 		return
 	}
 
+	// load tree for all other commands
 	tree, err := LoadTree()
 	if os.IsNotExist(err) {
 		filename, _ := HushPath()
@@ -27,39 +29,39 @@ func Main() {
 		fmt.Fprintf(os.Stderr, "Maybe you need to run 'hush init'?\n")
 		os.Exit(1)
 	}
+	if err == nil {
+		err = setPassphrase(tree)
+	}
 	if err != nil {
 		die("%s", err.Error())
 	}
 
-	// prepare for encryption and decryption
-	err = setPassphrase(tree)
-	if err != nil {
-		die("%s", err.Error())
-	}
-
-	// handle most commands
+	// dispatch to command
 	switch os.Args[1] {
 	case "export": // hush export
 		err = CmdExport(os.Stdout, tree)
-	case "import": // hush import
+	case "import":
 		var warnings []string
 		warnings, err = CmdImport(os.Stdin, tree)
 		for _, warning := range warnings {
 			warn(warning)
 		}
-	case "ls": // hush ls foo/bar
+	case "ls":
 		if len(os.Args) < 3 {
 			tree.Print(os.Stdout)
 			return
 		}
 		err = CmdLs(os.Stdout, tree, os.Args[2])
-	case "rm": // hush rm paypal.com/personal
+	case "rm":
 		paths := make([]Path, len(os.Args)-2)
 		for i := 2; i < len(os.Args); i++ {
 			paths[i-2] = NewPath(os.Args[i])
 		}
 		err = CmdRm(tree, paths)
-	case "set": // hush set paypal.com/personal/user john@example.com
+	case "set":
+		if len(os.Args) < 4 {
+			die("Usage: hush set path value")
+		}
 		p := NewPath(os.Args[2])
 		v, err := CaptureValue(os.Args[3])
 		if err != nil {
