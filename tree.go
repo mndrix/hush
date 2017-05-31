@@ -222,7 +222,7 @@ func isLowercase(s string) bool {
 }
 
 func matches(p Path, pattern string) bool {
-	ps := strings.Split(string(p), "\t")
+	ps := p.AsCrumbs()
 	patterns := strings.Split(pattern, "/")
 	if len(patterns) > len(ps) {
 		return false
