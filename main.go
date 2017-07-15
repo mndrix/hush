@@ -67,7 +67,8 @@ func Main() {
 			die("Usage: hush set path value")
 		}
 		p := NewPath(os.Args[2])
-		v, err := CaptureValue(os.Args[3])
+		var v *Value
+		v, err = CaptureValue(os.Args[3])
 		if err != nil {
 			die("%s", err.Error())
 		}
