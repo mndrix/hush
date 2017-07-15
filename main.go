@@ -77,7 +77,7 @@ func Main() {
 		usage()
 	}
 	if err != nil {
-		die("%s", err.Error())
+		die("error: %s", err.Error())
 	}
 }
 
