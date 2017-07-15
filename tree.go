@@ -439,7 +439,7 @@ func (tree *Tree) Save() error {
 	if err != nil {
 		return errors.Wrap(err, "saving tree")
 	}
-	_, err = file.Write(data)
+	file.Write(data)
 	io.WriteString(file, "hush-tree-checksum: ")
 	io.WriteString(file, NewPlaintext(tree.Checksum(), Public).Encode().String())
 	io.WriteString(file, "\n")
