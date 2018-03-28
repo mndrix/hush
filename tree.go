@@ -456,8 +456,35 @@ func (tree *Tree) Save() error {
 	if err != nil {
 		return errors.Wrap(err, "saving tree")
 	}
-	err = os.Rename(file.Name(), hushPath)
+	err = rename(file.Name(), hushPath)
 	return errors.Wrap(err, "saving tree")
+}
+
+// rename is like os.Rename but it falls back to copy-then-remove if
+// the rename() system call fails.
+func rename(oldpath, newpath string) error {
+	err := os.Rename(oldpath, newpath)
+	if err == nil {
+		return nil
+	}
+
+	// trouble renaming, try to copy then remove instead
+	old, err := os.Open(oldpath)
+	if err != nil {
+		return errors.Wrap(err, "opening source after failed rename")
+	}
+	defer old.Close()
+	new, err := os.Create(newpath)
+	if err != nil {
+		return errors.Wrap(err, "creating target after failed rename")
+	}
+	defer new.Close()
+	_, err = io.Copy(new, old)
+	if err != nil {
+		return errors.Wrap(err, "copying content after failed rename")
+	}
+	err = os.Remove(oldpath)
+	return errors.Wrap(err, "removing source after failed rename")
 }
 
 // stretchPassword converts a password and a salt into a
