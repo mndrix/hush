@@ -479,6 +479,10 @@ func rename(oldpath, newpath string) error {
 		return errors.Wrap(err, "creating target after failed rename")
 	}
 	defer new.Close()
+	err = os.Chmod(newpath, safePerm)
+	if err != nil {
+		return errors.Wrap(err, "set permissions after failed rename")
+	}
 	_, err = io.Copy(new, old)
 	if err != nil {
 		return errors.Wrap(err, "copying content after failed rename")
