@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -430,8 +431,18 @@ func (tree *Tree) Save() error {
 		return errors.Wrap(err, "saving tree")
 	}
 
+	// where does the saved data eventually belong?
+	hushPath, err := HushPath()
+	if os.IsNotExist(err) {
+		err = nil // we can create the file
+	}
+	if err != nil {
+		return errors.Wrap(err, "saving tree")
+	}
+
 	// save to temporary file
-	file, err := ioutil.TempFile("", "hush-")
+	hushDir := filepath.Dir(hushPath)
+	file, err := ioutil.TempFile(hushDir, "hush-")
 	if err != nil {
 		return errors.Wrap(err, "saving tree")
 	}
@@ -449,13 +460,6 @@ func (tree *Tree) Save() error {
 	}
 
 	// move temporary file over top of permanent file
-	hushPath, err := HushPath()
-	if os.IsNotExist(err) {
-		err = nil // we can create the file
-	}
-	if err != nil {
-		return errors.Wrap(err, "saving tree")
-	}
 	err = rename(file.Name(), hushPath)
 	return errors.Wrap(err, "saving tree")
 }
