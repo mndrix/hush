@@ -6,7 +6,7 @@ import (
 )
 
 func CmdHelp(w io.Writer) {
-	io.WriteString(os.Stderr, helpMessage)
+	io.WriteString(os.Stdout, helpMessage)
 }
 
 var helpMessage = `NAME
