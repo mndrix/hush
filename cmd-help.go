@@ -1,12 +1,12 @@
 package hush
 
 import (
-    "io"
-    "os"
+	"io"
+	"os"
 )
 
 func CmdHelp(w io.Writer) {
-    io.WriteString(os.Stderr, helpMessage)
+	io.WriteString(os.Stderr, helpMessage)
 }
 
 var helpMessage = `NAME
