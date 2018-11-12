@@ -15,6 +15,9 @@ var helpMessage = `NAME
 SYNOPSIS
     hush [command [arguments]]
 
+INSTALLATION
+    go install github.com/mndrix/hush/...
+
 DESCRIPTION
     hush is a password manager with a small, understandable code base.
     Your secrets are stored in a tree with encrypted leaves.  You can
